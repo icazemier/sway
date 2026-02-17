@@ -1,0 +1,91 @@
+{
+  "name": "@icazemier/sway",
+  "private": false,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Adaptive concurrent task runner — like Promise.all() with gradient-based concurrency control",
+  "contributors": [
+    {
+      "name": "Ivo Cazemier",
+      "email": "git@warmemelk.nl",
+      "url": "https://github.com/icazemier"
+    }
+  ],
+  "keywords": [
+    "concurrency",
+    "async",
+    "promise",
+    "parallel",
+    "adaptive",
+    "throttle",
+    "task runner"
+  ],
+  "files": [
+    "build/"
+  ],
+  "main": "./build/cjs/index.js",
+  "module": "./build/esm/index.js",
+  "exports": {
+    ".": {
+      "import": "./build/esm/index.js",
+      "require": "./build/cjs/index.js"
+    }
+  },
+  "types": "./build/esm/index.d.ts",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "os": [
+    "darwin",
+    "linux",
+    "win32"
+  ],
+  "scripts": {
+    "test": "cross-env NODE_ENV=test vitest run --coverage",
+    "build:esm": "tsc -p tsconfig-build-esm.json",
+    "build:cjs": "tsc -p tsconfig-build-cjs.json",
+    "build": "rimraf build && npm run build:esm && npm run build:cjs && npm run fixup && npm run docs",
+    "docs": "typedoc --out docs src/index.ts",
+    "fixup": "node ./fixup.mjs",
+    "clean:build": "rimraf build",
+    "clean:docs": "rimraf docs",
+    "lint": "eslint . --ext .ts",
+    "lint:fix": "eslint . --ext .ts --fix",
+    "prepare": "husky",
+    "release": "semantic-release",
+    "release:dry": "semantic-release --dry-run"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/icazemier/sway"
+  },
+  "homepage": "https://github.com/icazemier/sway#readme",
+  "bugs": {
+    "url": "https://github.com/icazemier/sway/issues"
+  },
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^19.6.0",
+    "@commitlint/config-conventional": "^19.6.0",
+    "@eslint/js": "^9.26.0",
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/git": "^10.0.1",
+    "@types/node": "^22.15.15",
+    "@vitest/coverage-v8": "^4.0.18",
+    "conventional-changelog-conventionalcommits": "^8.0.0",
+    "cross-env": "^7.0.3",
+    "eslint": "^9.26.0",
+    "eslint-config-prettier": "^10.1.3",
+    "eslint-plugin-prettier": "^5.4.0",
+    "husky": "^9.1.7",
+    "rimraf": "^6.0.1",
+    "semantic-release": "^25.0.3",
+    "typedoc": "^0.28.3",
+    "typescript": "^5.2.2",
+    "typescript-eslint": "^8.31.1",
+    "vitest": "^4.0.18"
+  }
+}

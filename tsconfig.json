@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "allowSyntheticDefaultImports": true,
+    "declaration": true,
+    "declarationMap": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "noImplicitReturns": true,
+    "noUnusedLocals": true,
+    "outDir": "./build/esm",
+    "preserveConstEnums": true,
+    "rootDir": "./",
+    "skipLibCheck": true,
+    "sourceMap": true,
+    "strict": true,
+    "target": "ES2020",
+    "types": ["node"]
+  },
+  "lib": ["ES2023"],
+  "include": ["./**/*.ts", "./**/*.d.ts"],
+  "exclude": ["./build", "./node_modules"]
+}
