@@ -1,21 +1,36 @@
 import { bench, describe } from 'vitest';
 import { sway } from './sway.js';
 
-const TASK_COUNT = 1000;
-const BASE_DELAY = 10;
+const TASK_COUNT = 500;
 
-const delay = (ms: number): Promise<void> =>
-  new Promise((resolve) => setTimeout(resolve, ms));
+/**
+ * Simulates a resource with back-pressure. Latency is minimal up to an
+ * optimal concurrency, then increases sharply as the "server" becomes
+ * overloaded. This models real-world behaviour like connection pool
+ * exhaustion, rate limiting, or CPU saturation.
+ *
+ * @param optimalConcurrency - The sweet spot where throughput is highest
+ */
+function createBackPressureResource(optimalConcurrency: number) {
+  let inFlight = 0;
 
-const makeTasks = (count: number, delayMs: number) =>
-  Array.from({ length: count }, (_, i) => () => delay(delayMs).then(() => i));
+  return (baseMs: number): Promise<number> => {
+    inFlight++;
+    const load = inFlight / optimalConcurrency;
+    // Below optimal: base latency with small jitter
+    // Above optimal: latency grows quadratically (contention)
+    const penalty = load > 1 ? baseMs * (load - 1) ** 2 * 4 : 0;
+    const jitter = Math.random() * baseMs * 0.2;
+    const actualDelay = baseMs + penalty + jitter;
 
-const makeVariableTasks = (count: number, baseMs: number) =>
-  Array.from({ length: count }, (_, i) => () => {
-    const jitter = 0.5 + Math.random();
-    const outlier = Math.random() < 0.1 ? 5 : 1;
-    return delay(baseMs * jitter * outlier).then(() => i);
-  });
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        inFlight--;
+        resolve(actualDelay);
+      }, actualDelay);
+    });
+  };
+}
 
 /**
  * Fixed-concurrency runner for comparison baseline.
@@ -53,43 +68,65 @@ async function fixedPool<T>(
   });
 }
 
-describe('sway vs fixed concurrency — uniform latency', () => {
+/**
+ * Scenario: server with optimal concurrency around 8.
+ * - Too few concurrent requests: underutilised, slow total time
+ * - Too many concurrent requests: contention, latency spikes
+ * - Sway should converge near the optimum without knowing it upfront
+ */
+describe('back-pressure resource (optimal=8)', () => {
+  const OPTIMAL = 8;
+  const BASE_MS = 10;
+
+  const makeTasks = () => {
+    const resource = createBackPressureResource(OPTIMAL);
+    return Array.from({ length: TASK_COUNT }, () => () => resource(BASE_MS));
+  };
+
   bench(
-    'fixed pool (concurrency=4)',
+    'fixed pool (concurrency=2) — too low',
     async () => {
-      await fixedPool(makeTasks(TASK_COUNT, BASE_DELAY), 4);
+      await fixedPool(makeTasks(), 2);
     },
     { iterations: 3, warmupIterations: 1 }
   );
 
   bench(
-    'fixed pool (concurrency=16)',
+    'fixed pool (concurrency=8) — optimal',
     async () => {
-      await fixedPool(makeTasks(TASK_COUNT, BASE_DELAY), 16);
+      await fixedPool(makeTasks(), 8);
     },
     { iterations: 3, warmupIterations: 1 }
   );
 
   bench(
-    'fixed pool (concurrency=64)',
+    'fixed pool (concurrency=32) — too high',
     async () => {
-      await fixedPool(makeTasks(TASK_COUNT, BASE_DELAY), 64);
+      await fixedPool(makeTasks(), 32);
     },
     { iterations: 3, warmupIterations: 1 }
   );
 
   bench(
-    'sway (defaults)',
+    'fixed pool (concurrency=64) — way too high',
     async () => {
-      await sway(makeTasks(TASK_COUNT, BASE_DELAY));
+      await fixedPool(makeTasks(), 64);
     },
     { iterations: 3, warmupIterations: 1 }
   );
 
   bench(
-    'sway (aggressive)',
+    'sway (defaults, initial=4)',
     async () => {
-      await sway(makeTasks(TASK_COUNT, BASE_DELAY), {
+      await sway(makeTasks());
+    },
+    { iterations: 3, warmupIterations: 1 }
+  );
+
+  bench(
+    'sway (aggressive, initial=8)',
+    async () => {
+      await sway(makeTasks(), {
         initialConcurrency: 8,
         probeInterval: 4,
         smoothingFactor: 0.6,
@@ -99,46 +136,58 @@ describe('sway vs fixed concurrency — uniform latency', () => {
   );
 });
 
-describe('sway vs fixed concurrency — variable latency with outliers', () => {
+/**
+ * Scenario: tight resource with optimal concurrency around 4.
+ * Aggressive penalty for overshooting — like a database connection pool.
+ */
+describe('back-pressure resource (optimal=4)', () => {
+  const OPTIMAL = 4;
+  const BASE_MS = 15;
+
+  const makeTasks = () => {
+    const resource = createBackPressureResource(OPTIMAL);
+    return Array.from({ length: TASK_COUNT }, () => () => resource(BASE_MS));
+  };
+
   bench(
-    'fixed pool (concurrency=4)',
+    'fixed pool (concurrency=4) — optimal',
     async () => {
-      await fixedPool(makeVariableTasks(TASK_COUNT, BASE_DELAY), 4);
+      await fixedPool(makeTasks(), 4);
     },
     { iterations: 3, warmupIterations: 1 }
   );
 
   bench(
-    'fixed pool (concurrency=16)',
+    'fixed pool (concurrency=16) — too high',
     async () => {
-      await fixedPool(makeVariableTasks(TASK_COUNT, BASE_DELAY), 16);
+      await fixedPool(makeTasks(), 16);
     },
     { iterations: 3, warmupIterations: 1 }
   );
 
   bench(
-    'fixed pool (concurrency=64)',
+    'fixed pool (concurrency=64) — way too high',
     async () => {
-      await fixedPool(makeVariableTasks(TASK_COUNT, BASE_DELAY), 64);
+      await fixedPool(makeTasks(), 64);
     },
     { iterations: 3, warmupIterations: 1 }
   );
 
   bench(
-    'sway (defaults)',
+    'sway (defaults, initial=4)',
     async () => {
-      await sway(makeVariableTasks(TASK_COUNT, BASE_DELAY));
+      await sway(makeTasks());
     },
     { iterations: 3, warmupIterations: 1 }
   );
 
   bench(
-    'sway (aggressive)',
+    'sway (calm, initial=2)',
     async () => {
-      await sway(makeVariableTasks(TASK_COUNT, BASE_DELAY), {
-        initialConcurrency: 8,
-        probeInterval: 4,
-        smoothingFactor: 0.6,
+      await sway(makeTasks(), {
+        initialConcurrency: 2,
+        probeInterval: 8,
+        smoothingFactor: 0.2,
       });
     },
     { iterations: 3, warmupIterations: 1 }
