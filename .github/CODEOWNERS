@@ -1,0 +1,22 @@
+# Code Owners
+# These owners will be automatically requested for review when someone opens a pull request.
+# Order is important; the last matching pattern takes the most precedence.
+
+# Default owners for everything in the repo
+* @icazemier
+
+# Workflow and CI/CD configuration
+/.github/ @icazemier
+
+# Core library code
+/src/ @icazemier
+
+# Package and dependency management
+package.json @icazemier
+package-lock.json @icazemier
+
+# Configuration files
+*.config.* @icazemier
+.releaserc.json @icazemier
+.commitlintrc.json @icazemier
+tsconfig*.json @icazemier
