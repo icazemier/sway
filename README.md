@@ -4,6 +4,18 @@
 
 `Promise.all()` with adaptive concurrency control. A gradient-based controller continuously measures throughput and adjusts the concurrency level to maximise task completion speed — zero dependencies.
 
+## When to use sway
+
+Sway is designed for workloads where **the right concurrency level is unknown** and **overshooting has real costs**:
+
+- **HTTP APIs & web scraping** — servers enforce rate limits or degrade under load; sway finds the sweet spot without hammering the target
+- **Database operations** — connection pools have finite size; too many parallel queries cause contention and timeouts
+- **File system / disk I/O** — throughput plateaus past a certain parallelism; going higher just adds overhead
+- **Microservice fanouts** — downstream services have varying capacity; sway adapts as back-pressure changes
+- **CI/CD pipelines** — resource-constrained runners benefit from not spawning more work than the machine can handle
+
+If your tasks have **no resource contention** (pure CPU, no I/O limits), a fixed-concurrency pool at a known-good level will be faster — sway's ramp-up time is wasted when there's nothing to adapt to.
+
 ## Install
 
 ```bash
@@ -72,6 +84,10 @@ function* generateTasks() {
 
 const { results } = await sway(generateTasks());
 ```
+
+## Benchmarks
+
+Run `npm run benchmark` to compare sway against fixed-concurrency pools using [vitest bench](https://vitest.dev/guide/features.html#benchmarking) (tinybench).
 
 ## Advanced: AdaptiveController
 
