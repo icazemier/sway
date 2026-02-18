@@ -1,3 +1,5 @@
+<img src="gibbons.png" width="200" />
+
 # @icazemier/sway
 
 `Promise.all()` with adaptive concurrency control. A gradient-based controller continuously measures throughput and adjusts the concurrency level to maximise task completion speed — zero dependencies.
