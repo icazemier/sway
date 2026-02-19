@@ -5,7 +5,8 @@ import { AdaptiveController } from './adaptive-controller.js';
  * Run async tasks concurrently with adaptive concurrency control.
  *
  * Works like `Promise.all()` but automatically tunes the number of in-flight
- * tasks using a gradient-based controller that maximises throughput.
+ * tasks using a latency-gradient controller that finds the optimal
+ * concurrency level.
  * Rejects on the first error (fail-fast), just like `Promise.all()`.
  *
  * @typeParam T - The resolved type of each task
@@ -65,13 +66,14 @@ export async function sway<T>(
         totalTasks++;
         activeTasks++;
 
+        const taskStart = performance.now();
         next
           .value()
           .then((value) => {
             if (settled) return;
             results[index] = value;
             activeTasks--;
-            controller.recordCompletion();
+            controller.recordCompletion(performance.now() - taskStart);
             scheduleNext();
           })
           .catch(tryReject);
