@@ -8,7 +8,7 @@ export interface SwayOptions {
   minConcurrency?: number;
   /** Number of concurrent in-flight tasks to start with (default: `4`) */
   initialConcurrency?: number;
-  /** EMA smoothing factor, ratio between 0 and 1 — lower values produce calmer adjustments (default: `0.3`) */
+  /** Latency EMA smoothing factor, ratio between 0 and 1 — lower values produce calmer adjustments (default: `0.3`) */
   smoothingFactor?: number;
   /** Number of completed tasks between probe adjustments (default: `8`) */
   probeInterval?: number;

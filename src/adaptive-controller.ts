@@ -7,19 +7,29 @@ const DEFAULT_SMOOTHING_FACTOR = 0.3;
 const DEFAULT_PROBE_INTERVAL = 8;
 
 /**
- * Gradient-based concurrency controller.
+ * Latency-gradient concurrency controller inspired by
+ * {@link https://en.wikipedia.org/wiki/TCP_Vegas | TCP Vegas} and
+ * {@link https://netflixtechblog.medium.com/performance-under-load-3e6fa9a60581 | Netflix's adaptive concurrency limiter}.
  *
- * Measures throughput via an exponential moving average (EMA) and adjusts the
- * concurrency level to maximise task completion speed. The controller probes
- * every {@link SwayOptions.probeInterval | probeInterval} completed tasks,
- * compares the current EMA throughput against the previous one, and nudges
- * concurrency up or down by one depending on the gradient direction.
+ * Latency is a leading indicator of contention — it rises immediately
+ * when concurrency exceeds optimal, before throughput drops. The controller
+ * tracks a learned minimum latency (no-contention baseline) and an EMA of
+ * recent latencies, then computes a gradient that steers concurrency
+ * toward equilibrium:
+ *
+ * ```
+ * gradient  = minLatency / smoothedLatency
+ * newLimit  = concurrency × gradient + √concurrency
+ * ```
+ *
+ * The minimum latency baseline slowly decays toward the EMA so that a
+ * single anomalously-fast task cannot permanently poison the gradient.
  *
  * @example
  * ```ts
  * const controller = new AdaptiveController({ maxConcurrency: 16 });
  * controller.getConcurrency(); // 4 (default initial)
- * controller.recordCompletion();
+ * controller.recordCompletion(12.5); // task took 12.5ms
  * ```
  */
 export class AdaptiveController {
@@ -30,9 +40,8 @@ export class AdaptiveController {
   private readonly probeInterval: number;
 
   private completionsSinceLastProbe = 0;
-  private emaThroughput: number | null = null;
-  private previousEmaThroughput: number | null = null;
-  private lastProbeTime: number;
+  private minLatency: number | null = null;
+  private latencyEma: number | null = null;
   private peakConcurrency: number;
   private concurrencySum = 0;
   private concurrencySamples = 0;
@@ -51,14 +60,30 @@ export class AdaptiveController {
 
     this.concurrency = this.clamp(this.concurrency);
     this.peakConcurrency = this.concurrency;
-    this.lastProbeTime = performance.now();
   }
 
   /**
-   * Signal that a task has completed. Triggers a probe when
-   * {@link SwayOptions.probeInterval | probeInterval} completions have accumulated.
+   * Signal that a task has completed with the given duration.
+   * Updates latency tracking and triggers a probe when enough
+   * completions have accumulated.
+   *
+   * @param durationMs - How long the task took in milliseconds
    */
-  recordCompletion(): void {
+  recordCompletion(durationMs: number): void {
+    // Update min latency (learned baseline)
+    if (this.minLatency === null || durationMs < this.minLatency) {
+      this.minLatency = durationMs;
+    }
+
+    // Update latency EMA
+    if (this.latencyEma === null) {
+      this.latencyEma = durationMs;
+    } else {
+      this.latencyEma =
+        this.smoothingFactor * durationMs +
+        (1 - this.smoothingFactor) * this.latencyEma;
+    }
+
     this.completionsSinceLastProbe++;
     this.concurrencySum += this.concurrency;
     this.concurrencySamples++;
@@ -94,38 +119,20 @@ export class AdaptiveController {
   }
 
   private probe(): void {
-    const now = performance.now();
-    const elapsed = now - this.lastProbeTime;
+    // Both are guaranteed non-null: recordCompletion() sets them before calling probe()
+    const minLat = this.minLatency;
+    const emaLat = this.latencyEma;
+    if (minLat === null || emaLat === null) return;
 
-    if (elapsed <= 0) {
-      this.completionsSinceLastProbe = 0;
-      this.lastProbeTime = now;
-      return;
-    }
+    const gradient = minLat / emaLat;
+    const newLimit = this.concurrency * gradient + Math.sqrt(this.concurrency);
+    this.setConcurrency(Math.round(newLimit));
 
-    const currentThroughput = this.completionsSinceLastProbe / (elapsed / 1000);
+    // Decay minLatency toward EMA so a single anomalously-fast task
+    // doesn't permanently poison the baseline
+    this.minLatency = minLat + (emaLat - minLat) * 0.05;
 
-    if (this.emaThroughput === null) {
-      this.emaThroughput = currentThroughput;
-    } else {
-      this.emaThroughput =
-        this.smoothingFactor * currentThroughput +
-        (1 - this.smoothingFactor) * this.emaThroughput;
-    }
-
-    if (this.previousEmaThroughput !== null) {
-      const gradient = this.emaThroughput - this.previousEmaThroughput;
-
-      if (gradient > 0) {
-        this.setConcurrency(this.concurrency + 1);
-      } else if (gradient < 0) {
-        this.setConcurrency(this.concurrency - 1);
-      }
-    }
-
-    this.previousEmaThroughput = this.emaThroughput;
     this.completionsSinceLastProbe = 0;
-    this.lastProbeTime = now;
   }
 
   private setConcurrency(value: number): void {

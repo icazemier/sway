@@ -26,6 +26,7 @@ Temporary Items
 .DS_Store
 .env
 docs/
+.clinic/
 
 # Claude
 .claude/
