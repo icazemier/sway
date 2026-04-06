@@ -1,9 +1,9 @@
 {
   "extends": "./tsconfig-build-esm.json",
   "compilerOptions": {
-    "module": "CommonJS",
+    "module": "Node16",
     "outDir": "./build/cjs",
     "target": "ES2017",
-    "moduleResolution": "node"
+    "moduleResolution": "node16"
   }
 }
