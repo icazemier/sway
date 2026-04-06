@@ -16,8 +16,8 @@
     "sourceMap": false,
     "allowJs": true,
     "allowSyntheticDefaultImports": true,
-    "baseUrl": "./src",
-    "rootDir": "./src"
+    "rootDir": "./src",
+    "types": ["node"]
   },
   "include": ["src/**/*.ts"],
   "exclude": ["src/**/*.spec.ts", "src/**/*.bench.ts", "tests/**/*", "node_modules", "build"]
