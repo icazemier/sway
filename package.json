@@ -45,7 +45,7 @@
     "build:esm": "tsc -p tsconfig-build-esm.json",
     "build:cjs": "tsc -p tsconfig-build-cjs.json",
     "build": "rimraf build && npm run build:esm && npm run build:cjs && npm run fixup && npm run docs",
-    "docs": "typedoc --out docs src/index.ts",
+    "docs": "rimraf docs && typedoc --out docs src/index.ts",
     "fixup": "node ./fixup.mjs",
     "benchmark": "vitest bench",
     "clean:build": "rimraf build",
