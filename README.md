@@ -31,6 +31,15 @@ console.log(stats.peakConcurrency);  // highest concurrency reached
 console.log(stats.avgConcurrency);   // average concurrency across the run
 ```
 
+For the common case of mapping items to async work, use `sway.map`:
+
+```ts
+const { results } = await sway.map(
+  urls,
+  async (url) => (await fetch(url)).json()
+);
+```
+
 That's it. No concurrency number to pick -- sway figures it out.
 
 ## Is sway right for me?
@@ -121,6 +130,35 @@ stats.avgConcurrency;  // weighted average concurrency
 stats.adjustments;     // how many times the controller changed level
 ```
 
+### `sway.allSettled` — never reject on task failure
+
+Mirrors `Promise.allSettled`: run every task to completion and get a settle-result per input, even when some tasks throw.
+
+```ts
+const { results } = await sway.allSettled(
+  urls.map(url => () => fetch(url))
+);
+for (const r of results) {
+  if (r.status === 'fulfilled') console.log(r.value.status);
+  else console.error(r.reason);
+}
+```
+
+The returned promise never rejects on task failure -- only if the input iterator itself throws.
+
+### `sway.map` — ergonomic mapping shortcut
+
+Pass items and an async function directly, like `Array.prototype.map`. Saves the thunk-wrapping boilerplate.
+
+```ts
+const { results } = await sway.map(
+  items,
+  async (item, index) => process(item)
+);
+```
+
+Items are pulled lazily from the source iterable, so generators with millions of items still work.
+
 ## Options
 
 All values are **counts** or **ratios** -- no time-based units to worry about.
@@ -188,6 +226,10 @@ Yes. `results[i]` corresponds to `tasks[i]`, regardless of completion order.
 
 Sway accepts any `Iterable` (arrays, generators, `Set`, custom iterables). Tasks are consumed lazily. Note: `AsyncIterable` is not currently supported -- the iterator must be synchronous, but each task function returns a promise.
 
+### Why no `sway.any` or `sway.race`?
+
+`Promise.any` and `Promise.race` are typically used with **small** alternative sets (2-5 mirrors, replicas, fallbacks). Sway's controller needs at least ~20 tasks to learn anything useful, and once one task settles the scheduler stops -- adaptive concurrency never gets to do its job. For race-to-first-success workloads you usually want full parallelism (fire everything at once); throttling literally delays the win. The native `Promise.any` / `Promise.race` are the right tools there.
+
 ## Benchmarks
 
 500 tasks, simulated back-pressure resource ([source](src/sway.bench.ts)).
@@ -210,6 +252,20 @@ Sway accepts any `Iterable` (arrays, generators, `Set`, custom iterables). Tasks
 | fixed pool (c=8) -- wrong after shift | 2,025ms | 1.4x |
 
 Sway's ~1.2x overhead is the cost of learning. A wrong fixed guess costs 8-50x.
+
+### Settled-mode benchmarks (`sway.allSettled`)
+
+500 tasks against the same contention resource (optimal = 8), with a fraction of tasks failing fast (~1ms pre-flight rejections). Ratios are vs. the best approach in each row:
+
+| Failure rate | `Promise.allSettled` | Fixed c=8 | Fixed c=32 | **`sway.allSettled`** |
+| --- | ---: | ---: | ---: | ---: |
+| 10% (flaky) | 197x slower | **1.0x** | 8.2x slower | **1.16x slower** |
+| 50% (very flaky) | 97x slower | **1.0x** | 7.8x slower | **1.09x slower** |
+| 100% (fully cooked) | **1.0x** | 23x slower | 6.9x slower | 44x slower ✱ |
+
+Same takeaway as plain `sway()`: adaptive control lands within ~1.1x of the optimal fixed pool **without being told what that optimum is**. Any fixed choice loses at one end of the spectrum -- `c=8` is great under contention and terrible without it; unbounded `Promise.allSettled` is the opposite. Sway adapts to whichever regime it finds itself in.
+
+✱ At 100% failures the controller never receives a successful-task latency to learn from, so it stays at `initialConcurrency` (default 4). Cheap in absolute terms (~150ms for 500 fast-fail tasks) but not where adaptive shines. For a workload you *know* fails close to 100% of the time, use `Promise.allSettled` directly.
 
 Reproduce with `npm run benchmark` ([vitest bench](https://vitest.dev/guide/features.html#benchmarking)). Resource models inspired by [Netflix's concurrency-limits](https://github.com/Netflix/concurrency-limits) ([blog post](https://netflixtechblog.medium.com/performance-under-load-3e6fa9a60581)).
 
