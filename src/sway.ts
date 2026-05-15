@@ -29,6 +29,25 @@ export async function sway<T>(
   tasks: Iterable<() => Promise<T>>,
   options?: SwayOptions
 ): Promise<SwayResult<T>> {
+  return runSway(tasks, options, () => true);
+}
+
+/**
+ * Internal scheduler shared with the variants built on top of {@link sway}
+ * (e.g. `sway.allSettled`).
+ *
+ * `shouldRecord` decides, per settled task, whether its latency should be
+ * fed into the adaptive controller. Wrappers use this to keep latencies
+ * that do not reflect real backend cost (e.g. pre-flight rejections) out
+ * of the controller's learned baseline.
+ *
+ * Not part of the published API.
+ */
+export async function runSway<T>(
+  tasks: Iterable<() => Promise<T>>,
+  options: SwayOptions | undefined,
+  shouldRecord: (value: T) => boolean
+): Promise<SwayResult<T>> {
   const controller = new AdaptiveController(options);
   const iterator = tasks[Symbol.iterator]();
   const results: T[] = [];
@@ -73,7 +92,9 @@ export async function sway<T>(
             if (settled) return;
             results[index] = value;
             activeTasks--;
-            controller.recordCompletion(performance.now() - taskStart);
+            if (shouldRecord(value)) {
+              controller.recordCompletion(performance.now() - taskStart);
+            }
             scheduleNext();
           })
           .catch(tryReject);
