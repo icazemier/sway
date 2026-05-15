@@ -2,7 +2,12 @@ import { sway as swayBase } from './sway.js';
 import { swayAllSettled } from './sway-all-settled.js';
 import { swayMap } from './sway-map.js';
 
-export const sway = Object.assign(swayBase, {
+type Sway = typeof swayBase & {
+  allSettled: typeof swayAllSettled;
+  map: typeof swayMap;
+};
+
+export const sway: Sway = Object.assign(swayBase, {
   allSettled: swayAllSettled,
   map: swayMap,
 });
