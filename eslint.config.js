@@ -8,6 +8,7 @@ const ignores = [
   'coverage/**/*',
   'docs/**/*',
   '.claude/**/*',
+  'compat/**/*',
 ];
 
 const stylisticConfig = {
