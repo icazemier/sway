@@ -13,6 +13,41 @@ Sway just puts 2 ideas together, (1st) an adaptive controller to control the (2n
 
 Sway automatically finds the optimal number of concurrent tasks -- you don't have to guess. Under the hood it uses a latency-gradient algorithm inspired by [TCP Vegas](https://en.wikipedia.org/wiki/TCP_Vegas) and [Netflix's adaptive concurrency limiter](https://netflixtechblog.medium.com/performance-under-load-3e6fa9a60581).
 
+## Runtime Compatibility
+
+| Runtime | Support | Install |
+|---------|---------|---------|
+| Node.js 22+ | ✅ Native | `npm install @icazemier/sway` |
+| Bun | ✅ Native | `bun add @icazemier/sway` |
+| Deno | ✅ via `npm:` | See below |
+| Browser | ✅ Native ESM | See below |
+
+### Deno
+
+```typescript
+import { sway } from "npm:@icazemier/sway";
+```
+
+Run with the required permissions:
+
+```bash
+deno run --allow-env --allow-net --allow-read --allow-sys your-script.ts
+```
+
+### Browser
+
+```html
+<script type="module">
+  import { sway } from 'https://esm.sh/@icazemier/sway';
+</script>
+```
+
+Or with a bundler (Vite, Webpack, etc.):
+
+```typescript
+import { sway } from '@icazemier/sway';
+```
+
 ## Quick start
 
 ```bash
