@@ -48,7 +48,6 @@
         }
       }
     ],
-    "@semantic-release/changelog",
     [
       "@semantic-release/npm",
       {
