@@ -21,7 +21,7 @@ jobs:
     if: "!contains(github.event.head_commit.message, 'skip ci') && !contains(github.event.head_commit.message, 'skip release')"
     strategy:
       matrix:
-        node-version: [22.x, 24.x]
+        node-version: [22.x, 24.x, 26.x]
     steps:
       - name: Checkout
         uses: actions/checkout@v6
