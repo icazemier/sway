@@ -8,6 +8,9 @@ const ignores = [
   'coverage/**/*',
   'docs/**/*',
   '.claude/**/*',
+  // Deno-only smoke test — excluded from Node tooling (tsc/typedoc/eslint),
+  // validated by the Deno smoke-test job in CI.
+  'compat/**/*',
 ];
 
 const stylisticConfig = {
