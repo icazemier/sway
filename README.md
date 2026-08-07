@@ -36,17 +36,13 @@ deno run --allow-env --allow-net --allow-read --allow-sys your-script.ts
 
 ### Browser
 
-```html
-<script type="module">
-  import { sway } from 'https://esm.sh/@icazemier/sway';
-</script>
-```
-
-Or with a bundler (Vite, Webpack, etc.):
+Use a bundler (Vite, Webpack, esbuild, etc.):
 
 ```typescript
 import { sway } from '@icazemier/sway';
 ```
+
+The published build is standard ESM with no dependencies, so it also works loaded directly as a module — serve `build/esm/index.js` from your own origin rather than a third-party CDN, which would put someone else's uptime and supply chain in front of your users.
 
 ## Quick start
 
@@ -223,6 +219,8 @@ Every `probeInterval` completions it computes:
 
 ```
 gradient    = minLatency / latencyEma          // 0..1, where 1 = no contention
+                                               // (1 when latencyEma is 0 — no
+                                               // measurable latency, no contention)
 newLimit    = concurrency × gradient + √concurrency
 concurrency = clamp(round(newLimit), min, max)
 ```
