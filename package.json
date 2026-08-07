@@ -1,7 +1,7 @@
 {
   "name": "@icazemier/sway",
   "private": false,
-  "version": "0.0.0",
+  "version": "2.1.1",
   "type": "module",
   "description": "Adaptive concurrent task runner — like Promise.all() with gradient-based concurrency control",
   "contributors": [
@@ -41,20 +41,21 @@
     "win32"
   ],
   "scripts": {
-    "test": "cross-env NODE_ENV=test vitest run --coverage",
+    "test": "vitest run --coverage",
     "build:esm": "tsc -p tsconfig-build-esm.json",
     "build:cjs": "tsc -p tsconfig-build-cjs.json",
-    "build": "rimraf build && npm run build:esm && npm run build:cjs && npm run fixup && npm run docs",
-    "docs": "rimraf docs && typedoc --out docs src/index.ts",
+    "build": "npm run clean:build && npm run build:esm && npm run build:cjs && npm run fixup && npm run docs",
+    "docs": "npm run clean:docs && typedoc --out docs src/index.ts",
     "fixup": "node ./fixup.mjs",
     "benchmark": "vitest bench",
-    "clean:build": "rimraf build",
-    "clean:docs": "rimraf docs",
+    "clean:build": "node -e \"require('fs').rmSync('build',{recursive:true,force:true})\"",
+    "clean:docs": "node -e \"require('fs').rmSync('docs',{recursive:true,force:true})\"",
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix",
-    "prepare": "husky",
-    "release": "semantic-release",
-    "release:dry": "semantic-release --dry-run"
+    "changeset": "changeset",
+    "release:version": "changeset version && npm install --package-lock-only",
+    "release": "changeset publish",
+    "publish:jsr": "jsr publish --allow-dirty"
   },
   "repository": {
     "type": "git",
@@ -66,32 +67,21 @@
   },
   "license": "MIT",
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "provenance": true
   },
   "devDependencies": {
-    "@commitlint/cli": "^20.5.0",
-    "@commitlint/config-conventional": "^20.5.0",
+    "@changesets/cli": "2.31.1",
     "@eslint/js": "^10.0.1",
     "@types/node": "^22.15.15",
     "@vitest/coverage-v8": "^4.1.2",
-    "conventional-changelog-conventionalcommits": "^9.3.1",
-    "cross-env": "^10.1.0",
     "eslint": "^10.2.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.5",
-    "husky": "^9.1.7",
-    "rimraf": "^6.1.3",
-    "semantic-release": "^25.0.3",
+    "jsr": "0.14.3",
     "typedoc": "^0.28.18",
     "typescript": "^6.0.2",
     "typescript-eslint": "^8.58.0",
     "vitest": "^4.1.2"
-  },
-  "overrides": {
-    "brace-expansion": "^5.0.6",
-    "fast-uri": "^3.1.2",
-    "ip-address": "^10.2.0",
-    "picomatch": "^4.0.4",
-    "postcss": "^8.5.14"
   }
 }
