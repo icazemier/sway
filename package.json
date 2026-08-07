@@ -1,7 +1,7 @@
 {
   "name": "@icazemier/sway",
   "private": false,
-  "version": "0.0.0",
+  "version": "2.1.1",
   "type": "module",
   "description": "Adaptive concurrent task runner — like Promise.all() with gradient-based concurrency control",
   "contributors": [
@@ -53,8 +53,9 @@
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix",
     "prepare": "husky",
-    "release": "semantic-release",
-    "release:dry": "semantic-release --dry-run",
+    "changeset": "changeset",
+    "release:version": "changeset version",
+    "release": "changeset publish",
     "publish:jsr": "jsr publish --allow-dirty"
   },
   "repository": {
@@ -67,15 +68,16 @@
   },
   "license": "MIT",
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "provenance": true
   },
   "devDependencies": {
+    "@changesets/cli": "2.31.1",
     "@commitlint/cli": "^20.5.0",
     "@commitlint/config-conventional": "^20.5.0",
     "@eslint/js": "^10.0.1",
     "@types/node": "^22.15.15",
     "@vitest/coverage-v8": "^4.1.2",
-    "conventional-changelog-conventionalcommits": "^9.3.1",
     "cross-env": "^10.1.0",
     "eslint": "^10.2.0",
     "eslint-config-prettier": "^10.1.8",
@@ -83,7 +85,6 @@
     "husky": "^9.1.7",
     "jsr": "0.14.3",
     "rimraf": "^6.1.3",
-    "semantic-release": "^25.0.3",
     "typedoc": "^0.28.18",
     "typescript": "^6.0.2",
     "typescript-eslint": "^8.58.0",
