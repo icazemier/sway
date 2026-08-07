@@ -7,6 +7,41 @@ const DEFAULT_SMOOTHING_FACTOR = 0.3;
 const DEFAULT_PROBE_INTERVAL = 8;
 
 /**
+ * Options arrive from callers, so TypeScript alone cannot keep them honest —
+ * a value crossing a JavaScript boundary, a parsed config, or an `any` in a
+ * consumer's code all reach here unchecked. A non-finite or fractional bound
+ * silently corrupts every later calculation, so it is rejected at the edge
+ * where the caller can still see which option was wrong.
+ */
+function requirePositiveInteger(
+  option: string,
+  value: number | undefined,
+  fallback: number
+): number {
+  if (value === undefined) return fallback;
+  if (!Number.isSafeInteger(value) || value < 1) {
+    throw new RangeError(
+      `${option} must be a positive integer, received ${String(value)}`
+    );
+  }
+  return value;
+}
+
+function requireRatio(
+  option: string,
+  value: number | undefined,
+  fallback: number
+): number {
+  if (value === undefined) return fallback;
+  if (!Number.isFinite(value) || value <= 0 || value > 1) {
+    throw new RangeError(
+      `${option} must be greater than 0 and at most 1, received ${String(value)}`
+    );
+  }
+  return value;
+}
+
+/**
  * Latency-gradient concurrency controller inspired by
  * {@link https://en.wikipedia.org/wiki/TCP_Vegas | TCP Vegas} and
  * {@link https://netflixtechblog.medium.com/performance-under-load-3e6fa9a60581 | Netflix's adaptive concurrency limiter}.
@@ -49,16 +84,43 @@ export class AdaptiveController {
 
   /**
    * @param options - Tuning knobs for the controller (all optional)
+   * @throws RangeError - If any option is outside the range it documents
    */
   constructor(options?: SwayOptions) {
-    this.maxConcurrency = options?.maxConcurrency ?? DEFAULT_MAX_CONCURRENCY;
-    this.minConcurrency = options?.minConcurrency ?? DEFAULT_MIN_CONCURRENCY;
-    this.concurrency =
-      options?.initialConcurrency ?? DEFAULT_INITIAL_CONCURRENCY;
-    this.smoothingFactor = options?.smoothingFactor ?? DEFAULT_SMOOTHING_FACTOR;
-    this.probeInterval = options?.probeInterval ?? DEFAULT_PROBE_INTERVAL;
+    this.maxConcurrency = requirePositiveInteger(
+      'maxConcurrency',
+      options?.maxConcurrency,
+      DEFAULT_MAX_CONCURRENCY
+    );
+    this.minConcurrency = requirePositiveInteger(
+      'minConcurrency',
+      options?.minConcurrency,
+      DEFAULT_MIN_CONCURRENCY
+    );
+    this.probeInterval = requirePositiveInteger(
+      'probeInterval',
+      options?.probeInterval,
+      DEFAULT_PROBE_INTERVAL
+    );
+    this.smoothingFactor = requireRatio(
+      'smoothingFactor',
+      options?.smoothingFactor,
+      DEFAULT_SMOOTHING_FACTOR
+    );
 
-    this.concurrency = this.clamp(this.concurrency);
+    if (this.minConcurrency > this.maxConcurrency) {
+      throw new RangeError(
+        `minConcurrency (${this.minConcurrency}) must not exceed maxConcurrency (${this.maxConcurrency})`
+      );
+    }
+
+    this.concurrency = this.clamp(
+      requirePositiveInteger(
+        'initialConcurrency',
+        options?.initialConcurrency,
+        DEFAULT_INITIAL_CONCURRENCY
+      )
+    );
     this.peakConcurrency = this.concurrency;
   }
 

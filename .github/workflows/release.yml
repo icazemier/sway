@@ -92,7 +92,10 @@ jobs:
     name: Publish to JSR
     needs: release
     runs-on: ubuntu-latest
-    if: needs.release.outputs.published == 'true'
+    # A custom `if` replaces the implicit success() gate that `needs` provides,
+    # so it is restated: a failed release job must not publish to JSR on the
+    # strength of a stale output.
+    if: success() && needs.release.outputs.published == 'true'
     permissions:
       contents: read
       id-token: write
