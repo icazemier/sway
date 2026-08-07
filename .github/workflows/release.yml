@@ -20,16 +20,16 @@ jobs:
         node-version: [22.x, 24.x, 26.x]
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Setup Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: ${{ matrix.node-version }}
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Lint
         run: npm run lint
@@ -46,47 +46,57 @@ jobs:
         run: npm run smoke
 
   release:
-    name: Version or Publish
+    name: Release
     needs: test
     runs-on: ubuntu-latest
     if: "!contains(github.event.head_commit.message, 'skip ci') && !contains(github.event.head_commit.message, 'skip release')"
     permissions:
       contents: write
-      pull-requests: write
       id-token: write
     outputs:
       published: ${{ steps.changesets.outputs.published }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           fetch-depth: 0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: 24
           cache: 'npm'
           registry-url: 'https://registry.npmjs.org'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Build
         run: npm run build
 
-      # Opens or updates a release PR when changesets are pending, and
-      # publishes to npm once that PR lands. Publishing goes through the
-      # runner's own npm, so it uses OIDC trusted publishing and needs no
-      # long-lived token; provenance comes from publishConfig.
-      - name: Version or publish
+      # Versioning happens in place rather than through a release PR, so merging
+      # into a release branch publishes directly. Consumes any pending changesets
+      # into the version, changelog and lockfile.
+      - name: Apply pending changesets
+        run: npm run release:version
+
+      - name: Commit the version bump
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git diff --staged --quiet || git commit -m 'chore: version packages'
+          git push origin HEAD:"$GITHUB_REF_NAME"
+
+      # Publishes whatever is now unpublished and creates the git tag and GitHub
+      # release. Publishing goes through the runner's own npm, so it uses OIDC
+      # trusted publishing and needs no long-lived token; provenance comes from
+      # publishConfig.
+      - name: Publish
         id: changesets
-        uses: changesets/action@v1.9.0
+        uses: changesets/action@a45c4d594aa4e2c509dc14a9f2b3b67ba3780d0d # v1.9.0
         with:
-          version: npm run release:version
           publish: npm run release
-          title: 'chore: version packages'
-          commit: 'chore: version packages'
 
   jsr:
     name: Publish to JSR
@@ -101,16 +111,16 @@ jobs:
       id-token: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: 24
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       # package.json is the version source of truth under changesets, so the
       # version is read locally rather than polled back from the registry.
