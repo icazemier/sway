@@ -318,6 +318,20 @@ controller.recordCompletion(12.5); // signal a task completed in 12.5ms
 controller.getStats(100, 5000);    // get telemetry snapshot
 ```
 
+## Releasing
+
+Releases run on [changesets](https://github.com/changesets/changesets). Any change that should reach users ships with a changeset describing it:
+
+```bash
+npm run changeset
+```
+
+Pick the bump type, write a one-line summary, and commit the generated file in `.changeset/` alongside your change. Pushing to a release branch opens (or updates) a **version packages** PR; merging that PR publishes to npm and JSR.
+
+Prerelease mode follows the branch automatically, so there is nothing to remember: releases from `main` are stable versions, and releases from any other branch land on the `beta` dist-tag. The release scripts run `pre-mode.mjs` first, which enters or leaves changesets' prerelease mode to match.
+
+Publishing uses the runner's own npm with OIDC trusted publishing, so no npm token is stored in the repository.
+
 ## License
 
 MIT
