@@ -40,6 +40,11 @@ jobs:
       - name: Test
         run: npm test
 
+      # Loads the built artifacts the way consumers do; the unit tests import
+      # TypeScript sources and cannot catch a wrong module format.
+      - name: Smoke test built package
+        run: npm run smoke
+
   release:
     name: Version or Publish
     needs: test
