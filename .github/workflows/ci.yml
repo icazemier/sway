@@ -24,6 +24,9 @@ jobs:
       - run: npm run lint
       - run: npm run build
       - run: npm test
+      # Loads the built artifacts the way consumers do; the unit tests import
+      # TypeScript sources and cannot catch a wrong module format.
+      - run: npm run smoke
 
   bun:
     name: Test on Bun
