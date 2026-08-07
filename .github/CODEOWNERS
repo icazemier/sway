@@ -17,6 +17,5 @@ package-lock.json @icazemier
 
 # Configuration files
 *.config.* @icazemier
-.releaserc.json @icazemier
-.commitlintrc.json @icazemier
+/.changeset/ @icazemier
 tsconfig*.json @icazemier
