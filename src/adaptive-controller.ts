@@ -124,7 +124,12 @@ export class AdaptiveController {
     const emaLat = this.latencyEma;
     if (minLat === null || emaLat === null) return;
 
-    const gradient = minLat / emaLat;
+    // Tasks fast enough to measure as 0ms drag both the baseline and the EMA
+    // to zero, and 0/0 is NaN. NaN fails every comparison, so it would survive
+    // clamping and then permanently close the scheduler's concurrency gate.
+    // No measurable latency means no contention, so the gradient is neutral
+    // and the limit still grows by the probe term.
+    const gradient = emaLat > 0 ? minLat / emaLat : 1;
     const newLimit = this.concurrency * gradient + Math.sqrt(this.concurrency);
     this.setConcurrency(Math.round(newLimit));
 
@@ -147,6 +152,10 @@ export class AdaptiveController {
   }
 
   private clamp(value: number): number {
+    // Math.max/Math.min propagate NaN rather than clamping it, which would let
+    // a non-numeric limit reach the scheduler and stall it. Infinities clamp
+    // to the bounds normally.
+    if (Number.isNaN(value)) return this.concurrency;
     return Math.max(this.minConcurrency, Math.min(this.maxConcurrency, value));
   }
 }
