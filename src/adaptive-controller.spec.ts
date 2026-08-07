@@ -282,4 +282,30 @@ describe('AdaptiveController', () => {
     // so gradient approaches 1 and concurrency should recover
     expect(controller.getConcurrency()).toBeGreaterThan(afterFirst);
   });
+
+  it('stays numeric when every task completes in 0ms', () => {
+    const controller = new AdaptiveController({ probeInterval: 4 });
+
+    for (let i = 0; i < 40; i++) {
+      controller.recordCompletion(0);
+    }
+
+    // A zero baseline and a zero EMA make the gradient 0/0. NaN would survive
+    // clamping and then close the scheduler's concurrency gate permanently.
+    expect(Number.isNaN(controller.getConcurrency())).toBe(false);
+    expect(controller.getConcurrency()).toBeGreaterThanOrEqual(1);
+  });
+
+  it('treats zero latency as no contention and grows the limit', () => {
+    const controller = new AdaptiveController({
+      probeInterval: 4,
+      initialConcurrency: 4,
+    });
+
+    for (let i = 0; i < 4; i++) {
+      controller.recordCompletion(0);
+    }
+
+    expect(controller.getConcurrency()).toBeGreaterThan(4);
+  });
 });
