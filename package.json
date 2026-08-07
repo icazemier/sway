@@ -53,8 +53,9 @@
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix",
     "changeset": "changeset",
-    "release:version": "changeset version && npm install --package-lock-only",
-    "release": "changeset publish",
+    "pre-mode": "node ./pre-mode.mjs",
+    "release:version": "npm run pre-mode && changeset version && npm install --package-lock-only",
+    "release": "npm run pre-mode && changeset publish",
     "publish:jsr": "jsr publish --allow-dirty"
   },
   "repository": {
