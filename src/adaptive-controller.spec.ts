@@ -21,11 +21,18 @@ describe('AdaptiveController', () => {
     });
     expect(over.getConcurrency()).toBe(16);
 
+    // A valid starting point below the floor is lifted to it...
     const under = new AdaptiveController({
-      initialConcurrency: 0,
+      initialConcurrency: 1,
       minConcurrency: 2,
     });
     expect(under.getConcurrency()).toBe(2);
+
+    // ...but zero is not a starting point, so it is rejected rather than
+    // silently coerced into one.
+    expect(
+      () => new AdaptiveController({ initialConcurrency: 0, minConcurrency: 2 })
+    ).toThrow(RangeError);
   });
 
   // ── Probe window ───────────────────────────────────────────────────
@@ -307,5 +314,40 @@ describe('AdaptiveController', () => {
     }
 
     expect(controller.getConcurrency()).toBeGreaterThan(4);
+  });
+
+  describe('option validation', () => {
+    it.each([
+      ['maxConcurrency', { maxConcurrency: 0 }],
+      ['maxConcurrency', { maxConcurrency: -5 }],
+      ['maxConcurrency', { maxConcurrency: Number.NaN }],
+      ['maxConcurrency', { maxConcurrency: Number.POSITIVE_INFINITY }],
+      ['initialConcurrency', { initialConcurrency: 2.7 }],
+      ['probeInterval', { probeInterval: 0 }],
+      ['smoothingFactor', { smoothingFactor: 0 }],
+      ['smoothingFactor', { smoothingFactor: 5 }],
+      ['smoothingFactor', { smoothingFactor: -1 }],
+    ])('rejects an out-of-range %s', (option, options) => {
+      expect(() => new AdaptiveController(options)).toThrow(RangeError);
+      expect(() => new AdaptiveController(options)).toThrow(option);
+    });
+
+    it('rejects a minimum above the maximum', () => {
+      expect(
+        () => new AdaptiveController({ minConcurrency: 100, maxConcurrency: 8 })
+      ).toThrow(RangeError);
+    });
+
+    it('accepts the documented bounds', () => {
+      const controller = new AdaptiveController({
+        maxConcurrency: 16,
+        minConcurrency: 2,
+        initialConcurrency: 4,
+        smoothingFactor: 1,
+        probeInterval: 1,
+      });
+
+      expect(controller.getConcurrency()).toBe(4);
+    });
   });
 });
