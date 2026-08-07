@@ -124,14 +124,16 @@ jobs:
 
       - name: Update jsr.json version
         if: steps.version.outputs.skip != 'true'
+        env:
+          JSR_VERSION: ${{ steps.version.outputs.version }}
         run: |
           node -e "
             const fs = require('fs');
             const jsr = JSON.parse(fs.readFileSync('jsr.json', 'utf8'));
-            jsr.version = '${{ steps.version.outputs.version }}';
+            jsr.version = process.env.JSR_VERSION;
             fs.writeFileSync('jsr.json', JSON.stringify(jsr, null, 2) + '\n');
           "
 
       - name: Publish to JSR
         if: steps.version.outputs.skip != 'true'
-        run: npx jsr publish --allow-dirty
+        run: npm run publish:jsr
