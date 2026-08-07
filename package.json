@@ -54,7 +54,7 @@
     "lint:fix": "eslint . --ext .ts --fix",
     "prepare": "husky",
     "changeset": "changeset",
-    "release:version": "changeset version",
+    "release:version": "changeset version && npm install --package-lock-only",
     "release": "changeset publish",
     "publish:jsr": "jsr publish --allow-dirty"
   },
