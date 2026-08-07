@@ -21,11 +21,18 @@ describe('AdaptiveController', () => {
     });
     expect(over.getConcurrency()).toBe(16);
 
+    // A valid starting point below the floor is lifted to it...
     const under = new AdaptiveController({
-      initialConcurrency: 0,
+      initialConcurrency: 1,
       minConcurrency: 2,
     });
     expect(under.getConcurrency()).toBe(2);
+
+    // ...but zero is not a starting point, so it is rejected rather than
+    // silently coerced into one.
+    expect(
+      () => new AdaptiveController({ initialConcurrency: 0, minConcurrency: 2 })
+    ).toThrow(RangeError);
   });
 
   // ── Probe window ───────────────────────────────────────────────────
@@ -281,5 +288,66 @@ describe('AdaptiveController', () => {
     // With decay, minLatency should have crept toward 50,
     // so gradient approaches 1 and concurrency should recover
     expect(controller.getConcurrency()).toBeGreaterThan(afterFirst);
+  });
+
+  it('stays numeric when every task completes in 0ms', () => {
+    const controller = new AdaptiveController({ probeInterval: 4 });
+
+    for (let i = 0; i < 40; i++) {
+      controller.recordCompletion(0);
+    }
+
+    // A zero baseline and a zero EMA make the gradient 0/0. NaN would survive
+    // clamping and then close the scheduler's concurrency gate permanently.
+    expect(Number.isNaN(controller.getConcurrency())).toBe(false);
+    expect(controller.getConcurrency()).toBeGreaterThanOrEqual(1);
+  });
+
+  it('treats zero latency as no contention and grows the limit', () => {
+    const controller = new AdaptiveController({
+      probeInterval: 4,
+      initialConcurrency: 4,
+    });
+
+    for (let i = 0; i < 4; i++) {
+      controller.recordCompletion(0);
+    }
+
+    expect(controller.getConcurrency()).toBeGreaterThan(4);
+  });
+
+  describe('option validation', () => {
+    it.each([
+      ['maxConcurrency', { maxConcurrency: 0 }],
+      ['maxConcurrency', { maxConcurrency: -5 }],
+      ['maxConcurrency', { maxConcurrency: Number.NaN }],
+      ['maxConcurrency', { maxConcurrency: Number.POSITIVE_INFINITY }],
+      ['initialConcurrency', { initialConcurrency: 2.7 }],
+      ['probeInterval', { probeInterval: 0 }],
+      ['smoothingFactor', { smoothingFactor: 0 }],
+      ['smoothingFactor', { smoothingFactor: 5 }],
+      ['smoothingFactor', { smoothingFactor: -1 }],
+    ])('rejects an out-of-range %s', (option, options) => {
+      expect(() => new AdaptiveController(options)).toThrow(RangeError);
+      expect(() => new AdaptiveController(options)).toThrow(option);
+    });
+
+    it('rejects a minimum above the maximum', () => {
+      expect(
+        () => new AdaptiveController({ minConcurrency: 100, maxConcurrency: 8 })
+      ).toThrow(RangeError);
+    });
+
+    it('accepts the documented bounds', () => {
+      const controller = new AdaptiveController({
+        maxConcurrency: 16,
+        minConcurrency: 2,
+        initialConcurrency: 4,
+        smoothingFactor: 1,
+        probeInterval: 1,
+      });
+
+      expect(controller.getConcurrency()).toBe(4);
+    });
   });
 });

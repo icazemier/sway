@@ -40,6 +40,11 @@ jobs:
       - name: Test
         run: npm test
 
+      # Loads the built artifacts the way consumers do; the unit tests import
+      # TypeScript sources and cannot catch a wrong module format.
+      - name: Smoke test built package
+        run: npm run smoke
+
   release:
     name: Version or Publish
     needs: test
@@ -87,7 +92,10 @@ jobs:
     name: Publish to JSR
     needs: release
     runs-on: ubuntu-latest
-    if: needs.release.outputs.published == 'true'
+    # A custom `if` replaces the implicit success() gate that `needs` provides,
+    # so it is restated: a failed release job must not publish to JSR on the
+    # strength of a stale output.
+    if: success() && needs.release.outputs.published == 'true'
     permissions:
       contents: read
       id-token: write
