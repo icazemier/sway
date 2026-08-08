@@ -1,9 +1,9 @@
 {
   "name": "@icazemier/sway",
   "private": false,
-  "version": "2.2.0-beta.0",
+  "version": "2.2.0",
   "type": "module",
-  "description": "Adaptive concurrent task runner \u2014 like Promise.all() with gradient-based concurrency control",
+  "description": "Adaptive concurrent task runner — like Promise.all() with gradient-based concurrency control",
   "contributors": [
     {
       "name": "Ivo Cazemier",
