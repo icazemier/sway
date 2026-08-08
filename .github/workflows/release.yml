@@ -103,10 +103,9 @@ jobs:
     name: Publish to JSR
     needs: release
     runs-on: ubuntu-latest
-    # A custom `if` replaces the implicit success() gate that `needs` provides,
-    # so it is restated: a failed release job must not publish to JSR on the
-    # strength of a stale output.
-    if: success() && needs.release.outputs.published == 'true'
+    # Deliberately not gated on "did npm publish this run". Both publishes are
+    # idempotent, so running every time lets a registry that fell behind catch
+    # up on its own instead of needing someone to push it by hand.
     permissions:
       contents: read
       id-token: write
@@ -140,23 +139,11 @@ jobs:
             fs.writeFileSync('jsr.json', JSON.stringify(jsr, null, 2) + '\n');
           "
 
-      # A checkout at the wrong commit made this job republish an existing
-      # version and still report success. Publishing something npm did not just
-      # publish is a failure, so it is asserted rather than assumed.
-      - name: Verify the checkout matches what npm published
-        env:
-          PUBLISHED_PACKAGES: ${{ needs.release.outputs.publishedPackages }}
-        run: |
-          node -e "
-            const fs = require('fs');
-            const published = JSON.parse(process.env.PUBLISHED_PACKAGES);
-            const { version } = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-            if (!published.some((entry) => entry.version === version)) {
-              console.error('checked out ' + version + ', npm published ' + JSON.stringify(published));
-              process.exit(1);
-            }
-            console.log('publishing ' + version + ' to JSR');
-          "
-
       - name: Publish to JSR
         run: npm run publish:jsr
+
+      # `jsr publish` exits 0 when it skips an already-published version, so a
+      # green step never proved anything shipped. Both registries are asserted
+      # to actually serve this version before the run is called a success.
+      - name: Verify both registries serve this version
+        run: npm run verify:published
