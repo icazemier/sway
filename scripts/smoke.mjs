@@ -38,8 +38,8 @@ const check = async (label, entry) => {
 };
 
 try {
-  await check('require (cjs)', require('./build/cjs/index.js'));
-  await check('import  (esm)', await import('./build/esm/index.js'));
+  await check('require (cjs)', require('../build/cjs/index.js'));
+  await check('import  (esm)', await import('../build/esm/index.js'));
   log('both entry points work');
 } catch (failure) {
   error(`smoke test failed: ${failure.message}`);

@@ -55,6 +55,7 @@ jobs:
       id-token: write
     outputs:
       published: ${{ steps.changesets.outputs.published }}
+      publishedPackages: ${{ steps.changesets.outputs.publishedPackages }}
     steps:
       - name: Checkout
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -102,16 +103,20 @@ jobs:
     name: Publish to JSR
     needs: release
     runs-on: ubuntu-latest
-    # A custom `if` replaces the implicit success() gate that `needs` provides,
-    # so it is restated: a failed release job must not publish to JSR on the
-    # strength of a stale output.
-    if: success() && needs.release.outputs.published == 'true'
+    # Deliberately not gated on "did npm publish this run". Both publishes are
+    # idempotent, so running every time lets a registry that fell behind catch
+    # up on its own instead of needing someone to push it by hand.
     permissions:
       contents: read
       id-token: write
     steps:
+      # The release job commits the version bump during this run, so the
+      # triggering commit still carries the previous version. Check out the
+      # branch tip instead, or JSR republishes the version already released.
       - name: Checkout
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.ref_name }}
 
       - name: Setup Node.js
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
@@ -136,3 +141,9 @@ jobs:
 
       - name: Publish to JSR
         run: npm run publish:jsr
+
+      # `jsr publish` exits 0 when it skips an already-published version, so a
+      # green step never proved anything shipped. Both registries are asserted
+      # to actually serve this version before the run is called a success.
+      - name: Verify both registries serve this version
+        run: npm run verify:published
