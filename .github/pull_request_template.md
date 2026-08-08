@@ -24,7 +24,7 @@
 
 - [ ] All existing tests pass (`npm test`)
 - [ ] Added new tests for new functionality
-- [ ] Tested on Node 20, 22, 24
+- [ ] Tested on Node 22, 24, 26
 - [ ] Linting passes (`npm run lint`)
 - [ ] Build succeeds (`npm run build`)
 

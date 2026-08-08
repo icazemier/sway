@@ -1,9 +1,16 @@
 {
   "extends": "./tsconfig-build-esm.json",
   "compilerOptions": {
-    "module": "Node16",
+    // Node16/NodeNext picks the module format from the nearest package.json
+    // "type", which is "module" here, so this build emitted ESM into build/cjs
+    // and `require()` of the package threw at load time. Classic CommonJS
+    // emit is the only combination TypeScript accepts for a real CJS output,
+    // and it requires node10 resolution — deprecated in 6.0, removed in 7.0,
+    // so this needs revisiting when TypeScript 7 lands.
+    "module": "CommonJS",
+    "moduleResolution": "node10",
+    "ignoreDeprecations": "6.0",
     "outDir": "./build/cjs",
-    "target": "ES2017",
-    "moduleResolution": "node16"
+    "target": "ES2017"
   }
 }

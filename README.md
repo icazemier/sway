@@ -36,17 +36,13 @@ deno run --allow-env --allow-net --allow-read --allow-sys your-script.ts
 
 ### Browser
 
-```html
-<script type="module">
-  import { sway } from 'https://esm.sh/@icazemier/sway';
-</script>
-```
-
-Or with a bundler (Vite, Webpack, etc.):
+Use a bundler (Vite, Webpack, esbuild, etc.):
 
 ```typescript
 import { sway } from '@icazemier/sway';
 ```
+
+The published build is standard ESM with no dependencies, so it also works loaded directly as a module — serve `build/esm/index.js` from your own origin rather than a third-party CDN, which would put someone else's uptime and supply chain in front of your users.
 
 ## Quick start
 
@@ -223,6 +219,8 @@ Every `probeInterval` completions it computes:
 
 ```
 gradient    = minLatency / latencyEma          // 0..1, where 1 = no contention
+                                               // (1 when latencyEma is 0 — no
+                                               // measurable latency, no contention)
 newLimit    = concurrency × gradient + √concurrency
 concurrency = clamp(round(newLimit), min, max)
 ```
@@ -328,7 +326,7 @@ npm run changeset
 
 Pick the bump type, write a one-line summary, and commit the generated file in `.changeset/` alongside your change. Pushing to a release branch opens (or updates) a **version packages** PR; merging that PR publishes to npm and JSR.
 
-Prerelease mode follows the branch automatically, so there is nothing to remember: releases from `main` are stable versions, and releases from any other branch land on the `beta` dist-tag. The release scripts run `pre-mode.mjs` first, which enters or leaves changesets' prerelease mode to match.
+Prerelease mode follows the branch automatically, so there is nothing to remember: releases from `main` are stable versions, and releases from any other branch land on the `beta` dist-tag. The release scripts run `scripts/pre-mode.mjs` first, which enters or leaves changesets' prerelease mode to match.
 
 Publishing uses the runner's own npm with OIDC trusted publishing, so no npm token is stored in the repository.
 
