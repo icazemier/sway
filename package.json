@@ -54,6 +54,7 @@
     "docs": "npm run clean:docs && typedoc --out docs src/index.ts",
     "fixup": "node ./scripts/fixup.mjs",
     "smoke": "node ./scripts/smoke.mjs",
+    "verify:pack": "node ./scripts/verify-pack.mjs",
     "verify:published": "node ./scripts/verify-published.mjs",
     "benchmark": "vitest bench",
     "clean:build": "node -e \"require('fs').rmSync('build',{recursive:true,force:true})\"",
