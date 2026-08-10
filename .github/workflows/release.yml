@@ -10,13 +10,18 @@ permissions:
   contents: read
 
 jobs:
+  # One Node version here, not the whole matrix. Cross-version coverage belongs
+  # to CI, which ran every supported version on the pull request that produced
+  # this commit; repeating it on the merge tested nothing new and multiplied the
+  # runners for every release. The release commit is still tested, on the active
+  # LTS.
   test:
     name: Test on Node ${{ matrix.node-version }}
     runs-on: ubuntu-latest
     if: "!contains(github.event.head_commit.message, 'skip ci') && !contains(github.event.head_commit.message, 'skip release')"
     strategy:
       matrix:
-        node-version: [22.x, 24.x, 26.x]
+        node-version: [24.x]
     steps:
       - name: Checkout
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
