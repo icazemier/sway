@@ -16,32 +16,12 @@
  */
 import { bench, describe } from 'vitest';
 import { sway } from './index.js';
+import { createContentionResource } from './bench-resources.js';
 
 const TASK_COUNT = 500;
 const FAIL_MS = 1;
 const OPTIMAL = 8;
 const BASE_MS = 10;
-
-// ── Resource model ───────────────────────────────────────────────────
-
-function createContentionResource(optimalConcurrency: number) {
-  let inFlight = 0;
-
-  return (baseMs: number): Promise<number> => {
-    inFlight++;
-    const load = inFlight / optimalConcurrency;
-    const penalty = load > 1 ? baseMs * (load - 1) ** 2 * 4 : 0;
-    const jitter = Math.random() * baseMs * 0.2;
-    const actualDelay = baseMs + penalty + jitter;
-
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        inFlight--;
-        resolve(actualDelay);
-      }, actualDelay);
-    });
-  };
-}
 
 /**
  * Build a flaky-task array. Failed tasks short-circuit before touching

@@ -23,7 +23,7 @@
   "exclude": [
     "src/**/*.spec.ts",
     "src/**/*.bench.ts",
-    "src/clinic-profile.ts",
+    "src/bench-resources.ts",
     "tests/**/*",
     "node_modules",
     "build"
