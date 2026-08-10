@@ -44,9 +44,29 @@ jobs:
       - name: Smoke test built package
         run: npm run smoke
 
+  # The smoke test above loads the built artifacts, but from inside the
+  # repository, where local resolution hides anything the tarball gets wrong.
+  # This installs the packed tarball in a clean directory instead, which is the
+  # only path a consumer actually takes.
+  pack:
+    name: Verify the package installs as a consumer
+    if: "!contains(github.event.head_commit.message, 'skip ci') && !contains(github.event.head_commit.message, 'skip release')"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Setup Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24.x
+          cache: 'npm'
+      - run: npm ci --ignore-scripts
+      - run: npm run build
+      - run: npm run verify:pack
+
   release:
     name: Release
-    needs: test
+    needs: [test, pack]
     runs-on: ubuntu-latest
     if: "!contains(github.event.head_commit.message, 'skip ci') && !contains(github.event.head_commit.message, 'skip release')"
     permissions:
@@ -116,6 +136,9 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           ref: ${{ github.ref_name }}
+          # This job runs `jsr` (third-party code) while holding an OIDC token;
+          # don't also leave GITHUB_TOKEN behind in .git/config for it to read.
+          persist-credentials: false
 
       - name: Setup Node.js
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
