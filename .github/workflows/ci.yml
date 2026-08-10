@@ -28,6 +28,24 @@ jobs:
       # TypeScript sources and cannot catch a wrong module format.
       - run: npm run smoke
 
+  # The smoke test above loads the built artifacts, but from inside the
+  # repository, where local resolution hides anything the tarball gets wrong.
+  # This installs the packed tarball in a clean directory instead, which is the
+  # only path a consumer actually takes.
+  pack:
+    name: Verify the package installs as a consumer
+    if: "!contains(github.event.head_commit.message, 'skip ci')"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24.x
+          cache: 'npm'
+      - run: npm ci --ignore-scripts
+      - run: npm run build
+      - run: npm run verify:pack
+
   bun:
     name: Test on Bun
     if: "!contains(github.event.head_commit.message, 'skip ci')"
