@@ -1,7 +1,7 @@
 {
   "name": "@icazemier/sway",
   "private": false,
-  "version": "2.2.0",
+  "version": "2.2.1",
   "type": "module",
   "description": "Adaptive concurrent task runner — like Promise.all() with gradient-based concurrency control",
   "contributors": [
