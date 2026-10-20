@@ -1,6 +1,6 @@
 # @icazemier/sway
 
-## 2.2.1
+## 2.2.1-beta.0
 
 ### Patch Changes
 
