@@ -72,3 +72,5 @@ Deep release flow: see the `release` skill.
 - `@security-updates` — fix supply-chain vulnerabilities and release the fix
   (includes the typedoc/benchmark gotcha).
 - `@benchmarking` — work with the vitest-bench files and README tables.
+- `@adaptive-controller` — tinker safely on the latency-gradient controller
+  (TCP Vegas / Netflix `GradientLimit`) and the scheduler.
