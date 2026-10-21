@@ -12,6 +12,10 @@ export interface SwayOptions {
   smoothingFactor?: number;
   /** Number of completed tasks between probe adjustments (default: `8`) */
   probeInterval?: number;
+  /** Minimum throughput gain (fraction) required to keep a concurrency increase (default: `0.05`) */
+  minThroughputGain?: number;
+  /** Number of probes to wait before retrying a concurrency increase after a failed throughput check (default: `8`) */
+  retryAfterProbes?: number;
 }
 
 /**

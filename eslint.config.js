@@ -11,6 +11,9 @@ const ignores = [
   // Deno-only smoke test — excluded from Node tooling (tsc/typedoc/eslint),
   // validated by the Deno smoke-test job in CI.
   'compat/**/*',
+  // Benchmark files have different dependencies (vitest bench API)
+  '**/*.bench.ts',
+  'src/bench-resources.ts',
 ];
 
 const stylisticConfig = {

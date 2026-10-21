@@ -210,10 +210,24 @@ describe('AdaptiveController', () => {
 
     const concurrencies = [controller.getConcurrency()];
 
-    // Run 5 probe windows, all at constant latency (gradient = 1)
-    for (let window = 0; window < 5; window++) {
-      for (let i = 0; i < 4; i++) {
-        controller.recordCompletion(10);
+    // Model a genuinely no-contention resource: throughput rises as
+    // concurrency grows (independent tasks complete faster per unit time).
+    // Each window's 4 completions are stamped so the measured throughput
+    // (completions / time between probes) grows ~9% per step — enough to
+    // clear the minThroughputGain threshold, so the gate keeps the increases.
+    // Completion timestamps are chosen so the window from one probe's 4th
+    // completion to the next shrinks each step: 75, 65, 60, 55, 50 ms.
+    const spreads = [
+      [25, 50, 75, 100],
+      [115, 135, 150, 165],
+      [180, 198, 212, 225],
+      [238, 252, 266, 280],
+      [291, 303, 316, 330],
+    ];
+
+    for (const completions of spreads) {
+      for (const at of completions) {
+        controller.recordCompletion(10, at);
       }
       concurrencies.push(controller.getConcurrency());
     }
@@ -348,6 +362,51 @@ describe('AdaptiveController', () => {
       });
 
       expect(controller.getConcurrency()).toBe(4);
+    });
+
+    // ── Throughput gate tests ──────────────────────────────────────────
+
+    // Use a type assertion to access private properties for testing
+    interface ControllerWithPrivate {
+      minThroughputGain: number;
+      retryAfterProbes: number;
+    }
+
+    it('should use default minThroughputGain and retryAfterProbes', () => {
+      const controller = new AdaptiveController();
+      // Access private properties via type assertion for testing
+      expect(
+        (controller as unknown as ControllerWithPrivate).minThroughputGain
+      ).toBe(0.05);
+      expect(
+        (controller as unknown as ControllerWithPrivate).retryAfterProbes
+      ).toBe(8);
+    });
+
+    it('should accept custom minThroughputGain', () => {
+      const controller = new AdaptiveController({ minThroughputGain: 0.1 });
+      expect(
+        (controller as unknown as ControllerWithPrivate).minThroughputGain
+      ).toBe(0.1);
+    });
+
+    it('should accept custom retryAfterProbes', () => {
+      const controller = new AdaptiveController({ retryAfterProbes: 12 });
+      expect(
+        (controller as unknown as ControllerWithPrivate).retryAfterProbes
+      ).toBe(12);
+    });
+
+    describe('option validation for throughput gate', () => {
+      it.each([
+        ['minThroughputGain', { minThroughputGain: -0.1 }],
+        ['minThroughputGain', { minThroughputGain: 1.1 }],
+        ['retryAfterProbes', { retryAfterProbes: 0 }],
+        ['retryAfterProbes', { retryAfterProbes: -5 }],
+      ])('rejects an out-of-range %s', (option, options) => {
+        expect(() => new AdaptiveController(options)).toThrow(RangeError);
+        expect(() => new AdaptiveController(options)).toThrow(option);
+      });
     });
   });
 });

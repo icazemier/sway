@@ -93,7 +93,8 @@ export async function runSway<T>(
             results[index] = value;
             activeTasks--;
             if (shouldRecord(value)) {
-              controller.recordCompletion(performance.now() - taskStart);
+              const completedAt = performance.now();
+              controller.recordCompletion(completedAt - taskStart, completedAt);
             }
             scheduleNext();
           })
