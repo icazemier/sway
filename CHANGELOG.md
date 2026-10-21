@@ -1,5 +1,11 @@
 # @icazemier/sway
 
+## 2.2.1-beta.0
+
+### Patch Changes
+
+- Security: update @changesets/cli and vitest to address supply chain vulnerabilities
+
 ## 2.2.0
 
 ### Minor Changes
