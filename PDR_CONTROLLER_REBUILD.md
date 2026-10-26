@@ -1,7 +1,7 @@
 # PDR: Controller Rebuild from Scratch
 
 **Date:** 2026-10-26  
-**Branch:** `feat/throughput-gate`
+**Branch:** `feat/vegas-limit-rebuild`
 
 ---
 
@@ -9,7 +9,7 @@
 
 ### Facts
 - ✅ Rebuilt `AdaptiveController` from scratch, faithful to Netflix's VegasLimit
-- ✅ All 64 unit tests pass (including 32 adaptive-controller tests)
+- ✅ All 63 tests pass (4 files; 20 adaptive-controller tests)
 - ✅ Pluggable design preserved - same interface as before
 - ✅ Capacity-1: avgConcurrency ≈ 1.02, peak ≤ 8
 - ✅ Capacity-4: avgConcurrency ≈ 4.04 (within 3.5-4.5), peak ≤ 6
@@ -19,12 +19,14 @@
 
 ### Files Modified
 - `src/adaptive-controller.ts` - Complete rewrite using VegasLimit algorithm
-- `src/adaptive-controller.spec.ts` - 32 unit tests covering deterministic queuing scenarios
+- `src/adaptive-controller.spec.ts` - 20 unit tests covering deterministic queuing scenarios
+- `src/queuing-sim.ts` - Deterministic queuing-resource simulator for the specs
+- `src/interfaces.ts` - Added `probeMultiplier` option; removed the throughput-gate options
 - `PDR_CONTROLLER_REBUILD.md` - This document updated with final implementation notes
 
 ### Implementation Highlights
 1. **Proportional decision bands** (threshold=5%, alpha=10%, beta=floor(10%)+clamp to 1)
-2. **hasQueuing check**: EMA > minLatency × 1.1 triggers decrease even if queueSize ≤ beta
+2. **hasQueuing check**: EMA > minLatency × 1.15 (jitter dead-zone) triggers decrease even if queueSize ≤ beta
 3. **Hysteresis**: `settled` flag prevents oscillation around optimum
 4. **Decisive integer steps**: All limit changes bypass smoothing (rounding would erase +1 moves at tiny limits)
 5. **Re-probe**: Periodic baseline refresh enables detection of capacity growth
@@ -38,8 +40,8 @@
 All tests pass (`npm run test` = vitest run --coverage):
 
 ```
- Test Files  7 passed (7)
-      Tests  67 passed (67)
+ Test Files  4 passed (4)
+      Tests  63 passed (63)
 ```
 
 Key tests verified:
@@ -143,7 +145,7 @@ The rebuilt `AdaptiveController` is faithful to Netflix's VegasLimit algorithm w
    - `alpha = max(1, round(0.10 × limit))` — slow increase zone  
    - `beta = max(1, floor(0.10 × limit))` — decrease zone (uses floor+clamp to avoid false positives)
 
-3. **Key modification: hasQueuing check**: When EMA > minLatency × 1.1, treat as queuing even if queueSize ≤ beta
+3. **Key modification: hasQueuing check**: When EMA > minLatency × 1.15, treat as queuing even if queueSize ≤ beta
    - This catches early queuing signals when queueSize calculation is low but EMA already shows latency inflation
 
 4. **Hysteresis**: `settled` flag prevents aggressive increases once controller finds the sweet spot
@@ -156,7 +158,7 @@ The rebuilt `AdaptiveController` is faithful to Netflix's VegasLimit algorithm w
 
 ### Test Results
 
-All 32 unit tests pass, including:
+All 20 adaptive-controller unit tests pass, including:
 
 - **capacity-1 queuing resource**: avgConcurrency ≈ 1.02, peak ≤ 8 ✓
 - **capacity-4 queuing resource**: avgConcurrency ≈ 4.04 (within 3.5-4.5), peak ≤ 6 ✓

@@ -233,14 +233,21 @@ intent for VegasLimit):
 | --- | --- | --- |
 | No queuing | `queueSize ≤ 5%` | Aggressive increase |
 | Mild queuing | `queueSize < 10%` | Slow increase (log-root step) |
-| Heavy queuing | `queueSize > 20%` | Decrease (log-root step) |
+| Heavy queuing | `queueSize > 10%` | Decrease (log-root step) |
 | Sweet spot | in between | Hold |
 
-The `minLatency` baseline is **stable**: it is only ever lowered by a genuinely faster
-sample or refreshed by a periodic re-probe (every ~`probeMultiplier × concurrency`
-completions). It never decays toward the EMA. This is what stops concurrency from
-climbing without bound on a resource that queues work -- the no-load reference is never
-erased, so persistent queueing always reads as a decrease signal.
+A latency ratio past the jitter dead-zone (1.15× the no-load floor) is treated as
+queuing even when the size bands don't fire — so a single queued request at a tiny
+limit still triggers a decrease.
+
+The `minLatency` baseline is a **low percentile of a rolling window** of recent
+latencies (P25 over the last 64 samples), refreshed by a periodic re-probe (every
+~`probeMultiplier × concurrency` completions). It stays stable and exact on
+deterministic resources, but recovers after an overshoot spike on jittery ones —
+a strict monotonic minimum would cling to the absolute low tail of a jitter
+distribution and read as false queuing forever. This is what stops concurrency from
+climbing without bound on a resource that queues work: the no-load reference tracks
+the floor, so persistent queueing always reads as a decrease signal.
 
 ## FAQ
 
