@@ -94,7 +94,14 @@ export async function runSway<T>(
             activeTasks--;
             if (shouldRecord(value)) {
               const completedAt = performance.now();
-              controller.recordCompletion(completedAt - taskStart, completedAt);
+              // Pass the number of tasks still in flight after this one, so
+              // the controller's anti-drift guard can hold during lulls.
+              // `activeTasks` is the in-flight count excluding this task.
+              controller.recordCompletion(
+                completedAt - taskStart,
+                activeTasks,
+                /* didDrop */ false
+              );
             }
             scheduleNext();
           })

@@ -201,6 +201,7 @@ All values are **counts** or **ratios** -- no time-based units to worry about.
 | `initialConcurrency` | `4`    | How many tasks to start with                          |
 | `smoothingFactor`    | `0.3`  | Latency EMA responsiveness (0-1), lower = calmer      |
 | `probeInterval`      | `8`    | Completed tasks between concurrency adjustments       |
+| `probeMultiplier`    | `30`   | Completeness factor for the periodic baseline re-probe |
 
 **Tip:** The defaults work well for most workloads. Start without options and only tune if you see a reason to.
 
@@ -212,26 +213,34 @@ Sway uses **latency** instead. Latency is a *leading* indicator -- it rises *imm
 
 The controller tracks two values:
 
-- **`minLatency`** -- the lowest task duration observed (learned no-contention baseline)
+- **`minLatency`** -- the lowest task duration observed (stable no-load baseline)
 - **`latencyEma`** -- an exponential moving average of recent task durations
 
-Every `probeInterval` completions it computes:
+Every `probeInterval` completions it estimates how many requests are queued behind
+the resource, then adjusts:
 
 ```
-gradient    = minLatency / latencyEma          // 0..1, where 1 = no contention
-                                               // (1 when latencyEma is 0 — no
-                                               // measurable latency, no contention)
-newLimit    = concurrency × gradient + √concurrency
-concurrency = clamp(round(newLimit), min, max)
+queueSize = ceil(concurrency × (1 − minLatency / latencyEma))
 ```
 
-| Situation | gradient | What happens |
+`queueSize` is the number of in-flight requests that are waiting rather than being
+served -- the tail-latency signal the controller steers on.
+
+Decision bands are **proportional** to the current concurrency (Netflix's documented
+intent for VegasLimit):
+
+| Band | Bound | What happens |
 | --- | --- | --- |
-| No contention (latency ≈ baseline) | ≈ 1 | Concurrency grows by √n |
-| Moderate contention (latency 2× baseline) | ≈ 0.5 | Concurrency roughly halves, plus small √n bump |
-| Heavy contention (latency 10× baseline) | ≈ 0.1 | Concurrency drops sharply |
+| No queuing | `queueSize ≤ 5%` | Aggressive increase |
+| Mild queuing | `queueSize < 10%` | Slow increase (log-root step) |
+| Heavy queuing | `queueSize > 20%` | Decrease (log-root step) |
+| Sweet spot | in between | Hold |
 
-The `minLatency` baseline slowly decays toward the EMA so that a single anomalously-fast early task doesn't permanently skew the gradient. Genuinely fast tasks will continuously refresh the baseline.
+The `minLatency` baseline is **stable**: it is only ever lowered by a genuinely faster
+sample or refreshed by a periodic re-probe (every ~`probeMultiplier × concurrency`
+completions). It never decays toward the EMA. This is what stops concurrency from
+climbing without bound on a resource that queues work -- the no-load reference is never
+erased, so persistent queueing always reads as a decrease signal.
 
 ## FAQ
 
@@ -245,7 +254,13 @@ The controller starts adjusting after the first `probeInterval` completions (def
 
 ### Can sway make things slower than a fixed pool?
 
-In benchmarks, sway runs within ~1.1-1.2x of the optimal fixed pool -- the one you'd pick if you already knew the perfect number. The small overhead comes from the learning phase. If you *already know* the right concurrency, a fixed pool will be marginally faster.
+Sway's job is to find the right concurrency *without* knowing it in advance. On a
+contention-limited resource it lands within ~1.1-1.2x of the optimal fixed pool -- the
+one you'd pick if you already knew the perfect number. On a **queuing** resource the
+value is different: total throughput is capped at capacity regardless of concurrency, so
+sway's contribution is keeping concurrency (and thus queue depth / tail latency) near the
+optimum instead of letting it climb until `maxConcurrency` stops it. If you *already
+know* the right concurrency, a fixed pool is marginally faster.
 
 ### What happens on the first error?
 
