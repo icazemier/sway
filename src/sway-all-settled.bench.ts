@@ -85,32 +85,42 @@ for (const failureRate of [0.1, 0.5, 1.0]) {
   const pct = Math.round(failureRate * 100);
 
   describe(`sway.allSettled under contention (optimal=${OPTIMAL}, failures=${pct}%)`, () => {
-    test('Promise.allSettled — unbounded', { timeout: 600_000 }, async ({ bench }) => {
-      await bench(
-        'Promise.allSettled — unbounded', async () => {
+    test(
+      'Promise.allSettled — unbounded',
+      { timeout: 600_000 },
+      async ({ bench }) => {
+        await bench('Promise.allSettled — unbounded', async () => {
           await Promise.allSettled(makeTasks(failureRate).map((t) => t()));
         }).run({ iterations: 3, warmupIterations: 1 });
-    });
+      }
+    );
 
-    test('fixed pool (concurrency=8) — matches contention optimum', async ({ bench }) => {
+    test('fixed pool (concurrency=8) — matches contention optimum', async ({
+      bench,
+    }) => {
       await bench(
-        'fixed pool (concurrency=8) — matches contention optimum', async () => {
+        'fixed pool (concurrency=8) — matches contention optimum',
+        async () => {
           await fixedPoolAllSettled(makeTasks(failureRate), 8);
-        }).run({ iterations: 3, warmupIterations: 1 });
+        }
+      ).run({ iterations: 3, warmupIterations: 1 });
     });
 
-    test('fixed pool (concurrency=32) — too high under contention', async ({ bench }) => {
+    test('fixed pool (concurrency=32) — too high under contention', async ({
+      bench,
+    }) => {
       await bench(
-        'fixed pool (concurrency=32) — too high under contention', async () => {
+        'fixed pool (concurrency=32) — too high under contention',
+        async () => {
           await fixedPoolAllSettled(makeTasks(failureRate), 32);
-        }).run({ iterations: 3, warmupIterations: 1 });
+        }
+      ).run({ iterations: 3, warmupIterations: 1 });
     });
 
     test('sway.allSettled (defaults)', async ({ bench }) => {
-      await bench(
-        'sway.allSettled (defaults)', async () => {
-          await sway.allSettled(makeTasks(failureRate));
-        }).run({ iterations: 3, warmupIterations: 1 });
+      await bench('sway.allSettled (defaults)', async () => {
+        await sway.allSettled(makeTasks(failureRate));
+      }).run({ iterations: 3, warmupIterations: 1 });
     });
   });
 }

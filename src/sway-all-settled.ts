@@ -5,7 +5,7 @@ import { SwayOptions, SwayResult } from './interfaces.js';
  * Run async tasks concurrently with adaptive concurrency control, reporting
  * a settle-result for every task. Never rejects on task failure.
  *
- * Like {@link Promise.allSettled} but with sway's latency-gradient adaptive
+ * Like {@link Promise.allSettled} but with sway's latency-based adaptive
  * concurrency limiter. Each task's outcome is reported as a
  * {@link PromiseSettledResult} (`{ status: 'fulfilled', value }` or
  * `{ status: 'rejected', reason }`).

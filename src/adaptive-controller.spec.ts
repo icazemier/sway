@@ -282,9 +282,10 @@ describe('AdaptiveController', () => {
       initialConcurrency: 4,
       maxConcurrency: 20,
       smoothingFactor: 1.0,
-      // Small probeMultiplier so the periodic re-probe fires within the test's
-      // sample budget regardless of the internal jitter draw.
-      probeMultiplier: 1,
+      // probeCount now increments per completion, so a mid-size multiplier
+      // lets the first window pull back before the re-probe fires, then
+      // recovers the baseline over the run's ~120 completions.
+      probeMultiplier: 10,
     });
 
     // One anomalously fast task poisons the stable baseline, then normal tasks.

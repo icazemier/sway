@@ -65,9 +65,11 @@ export function runQueuingSim(
     const latency = elapsed - t.start;
     const concurrency = controller.getConcurrency();
     trace.push({ concurrency, latency });
-    // Pass the number of tasks still in flight excluding this one, matching
-    // how `sway.ts` reports `activeTasks` after decrementing it.
-    controller.recordCompletion(latency, dispatched - trace.length);
+    // Pass the number of tasks still in flight counting this one (Netflix's
+    // `getActiveCount()`), matching how `sway.ts` reports it via
+    // `activeTasks + 1`. This keeps the anti-drift guard consistent and lets a
+    // controller at the minimum grow.
+    controller.recordCompletion(latency, dispatched - trace.length + 1);
 
     // Release waiting tasks into freed slots (FIFO). A waiting task keeps its
     // original dispatch time so its observed latency includes the time it spent

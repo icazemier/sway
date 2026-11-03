@@ -11,9 +11,6 @@ const ignores = [
   // Deno-only smoke test — excluded from Node tooling (tsc/typedoc/eslint),
   // validated by the Deno smoke-test job in CI.
   'compat/**/*',
-  // Benchmark files have different dependencies (vitest bench API)
-  '**/*.bench.ts',
-  'src/bench-resources.ts',
   // Throwaway local simulations — gitignored, excluded from lint too so a
   // scratch sim/ file never fails `npm run lint`.
   'sim/**/*',

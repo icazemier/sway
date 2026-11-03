@@ -90,49 +90,47 @@ describe('contention resource (optimal=8)', () => {
   };
 
   test('fixed pool (concurrency=2) — too low', async ({ bench }) => {
-    await bench(
-      'fixed pool (concurrency=2) — too low', async () => {
-        await fixedPool(makeTasks(), 2);
-      }).run({ iterations: 3, warmupIterations: 1 });
+    await bench('fixed pool (concurrency=2) — too low', async () => {
+      await fixedPool(makeTasks(), 2);
+    }).run({ iterations: 3, warmupIterations: 1 });
   });
 
   test('fixed pool (concurrency=8) — optimal', async ({ bench }) => {
-    await bench(
-      'fixed pool (concurrency=8) — optimal', async () => {
-        await fixedPool(makeTasks(), 8);
-      }).run({ iterations: 3, warmupIterations: 1 });
+    await bench('fixed pool (concurrency=8) — optimal', async () => {
+      await fixedPool(makeTasks(), 8);
+    }).run({ iterations: 3, warmupIterations: 1 });
   });
 
   test('fixed pool (concurrency=32) — too high', async ({ bench }) => {
-    await bench(
-      'fixed pool (concurrency=32) — too high', async () => {
-        await fixedPool(makeTasks(), 32);
-      }).run({ iterations: 3, warmupIterations: 1 });
+    await bench('fixed pool (concurrency=32) — too high', async () => {
+      await fixedPool(makeTasks(), 32);
+    }).run({ iterations: 3, warmupIterations: 1 });
   });
 
-  test('fixed pool (concurrency=64) — way too high', { timeout: 600_000 }, async ({ bench }) => {
-    await bench(
-      'fixed pool (concurrency=64) — way too high', async () => {
+  test(
+    'fixed pool (concurrency=64) — way too high',
+    { timeout: 600_000 },
+    async ({ bench }) => {
+      await bench('fixed pool (concurrency=64) — way too high', async () => {
         await fixedPool(makeTasks(), 64);
       }).run({ iterations: 3, warmupIterations: 1 });
-  });
+    }
+  );
 
   test('sway (defaults, initial=4)', async ({ bench }) => {
-    await bench(
-      'sway (defaults, initial=4)', async () => {
-        await sway(makeTasks());
-      }).run({ iterations: 3, warmupIterations: 1 });
+    await bench('sway (defaults, initial=4)', async () => {
+      await sway(makeTasks());
+    }).run({ iterations: 3, warmupIterations: 1 });
   });
 
   test('sway (aggressive, initial=8)', async ({ bench }) => {
-    await bench(
-      'sway (aggressive, initial=8)', async () => {
-        await sway(makeTasks(), {
-          initialConcurrency: 8,
-          probeInterval: 4,
-          smoothingFactor: 0.6,
-        });
-      }).run({ iterations: 3, warmupIterations: 1 });
+    await bench('sway (aggressive, initial=8)', async () => {
+      await sway(makeTasks(), {
+        initialConcurrency: 8,
+        probeInterval: 4,
+        smoothingFactor: 0.6,
+      });
+    }).run({ iterations: 3, warmupIterations: 1 });
   });
 });
 
@@ -153,42 +151,45 @@ describe('contention resource (optimal=4)', () => {
   };
 
   test('fixed pool (concurrency=4) — optimal', async ({ bench }) => {
-    await bench(
-      'fixed pool (concurrency=4) — optimal', async () => {
-        await fixedPool(makeTasks(), 4);
-      }).run({ iterations: 3, warmupIterations: 1 });
+    await bench('fixed pool (concurrency=4) — optimal', async () => {
+      await fixedPool(makeTasks(), 4);
+    }).run({ iterations: 3, warmupIterations: 1 });
   });
 
-  test('fixed pool (concurrency=16) — too high', { timeout: 600_000 }, async ({ bench }) => {
-    await bench(
-      'fixed pool (concurrency=16) — too high', async () => {
+  test(
+    'fixed pool (concurrency=16) — too high',
+    { timeout: 600_000 },
+    async ({ bench }) => {
+      await bench('fixed pool (concurrency=16) — too high', async () => {
         await fixedPool(makeTasks(), 16);
       }).run({ iterations: 3, warmupIterations: 1 });
-  });
+    }
+  );
 
-  test('fixed pool (concurrency=64) — way too high', { timeout: 600_000 }, async ({ bench }) => {
-    await bench(
-      'fixed pool (concurrency=64) — way too high', async () => {
+  test(
+    'fixed pool (concurrency=64) — way too high',
+    { timeout: 600_000 },
+    async ({ bench }) => {
+      await bench('fixed pool (concurrency=64) — way too high', async () => {
         await fixedPool(makeTasks(), 64);
       }).run({ iterations: 3, warmupIterations: 1 });
-  });
+    }
+  );
 
   test('sway (defaults, initial=4)', async ({ bench }) => {
-    await bench(
-      'sway (defaults, initial=4)', async () => {
-        await sway(makeTasks());
-      }).run({ iterations: 3, warmupIterations: 1 });
+    await bench('sway (defaults, initial=4)', async () => {
+      await sway(makeTasks());
+    }).run({ iterations: 3, warmupIterations: 1 });
   });
 
   test('sway (calm, initial=2)', async ({ bench }) => {
-    await bench(
-      'sway (calm, initial=2)', async () => {
-        await sway(makeTasks(), {
-          initialConcurrency: 2,
-          probeInterval: 8,
-          smoothingFactor: 0.2,
-        });
-      }).run({ iterations: 3, warmupIterations: 1 });
+    await bench('sway (calm, initial=2)', async () => {
+      await sway(makeTasks(), {
+        initialConcurrency: 2,
+        probeInterval: 8,
+        smoothingFactor: 0.2,
+      });
+    }).run({ iterations: 3, warmupIterations: 1 });
   });
 });
 
@@ -216,35 +217,31 @@ describe('queuing resource (capacity=8, Netflix model)', () => {
   };
 
   test('fixed pool (concurrency=8) — matches capacity', async ({ bench }) => {
-    await bench(
-      'fixed pool (concurrency=8) — matches capacity', async () => {
-        await fixedPool(makeTasks(), 8);
-      }).run({ iterations: 3, warmupIterations: 1 });
+    await bench('fixed pool (concurrency=8) — matches capacity', async () => {
+      await fixedPool(makeTasks(), 8);
+    }).run({ iterations: 3, warmupIterations: 1 });
   });
 
   test('fixed pool (concurrency=2) — too low', async ({ bench }) => {
-    await bench(
-      'fixed pool (concurrency=2) — too low', async () => {
-        await fixedPool(makeTasks(), 2);
-      }).run({ iterations: 3, warmupIterations: 1 });
+    await bench('fixed pool (concurrency=2) — too low', async () => {
+      await fixedPool(makeTasks(), 2);
+    }).run({ iterations: 3, warmupIterations: 1 });
   });
 
   test('fixed pool (concurrency=32) — queue builds', async ({ bench }) => {
-    await bench(
-      'fixed pool (concurrency=32) — queue builds', async () => {
-        await fixedPool(makeTasks(), 32);
-      }).run({ iterations: 3, warmupIterations: 1 });
+    await bench('fixed pool (concurrency=32) — queue builds', async () => {
+      await fixedPool(makeTasks(), 32);
+    }).run({ iterations: 3, warmupIterations: 1 });
   });
 
   test('sway (defaults, initial=4)', async ({ bench }) => {
-    await bench(
-      'sway (defaults, initial=4)', async () => {
-        const { stats } = await sway(makeTasks());
-        // eslint-disable-next-line no-console
-        console.log(
-          `  [sway] peak=${stats.peakConcurrency} avg=${stats.avgConcurrency.toFixed(2)}`
-        );
-      }).run({ iterations: 3, warmupIterations: 1 });
+    await bench('sway (defaults, initial=4)', async () => {
+      const { stats } = await sway(makeTasks());
+
+      console.log(
+        `  [sway] peak=${stats.peakConcurrency} avg=${stats.avgConcurrency.toFixed(2)}`
+      );
+    }).run({ iterations: 3, warmupIterations: 1 });
   });
 });
 
@@ -264,21 +261,19 @@ describe('queuing resource (capacity=1, Netflix model)', () => {
   };
 
   test('fixed pool (concurrency=1) — matches capacity', async ({ bench }) => {
-    await bench(
-      'fixed pool (concurrency=1) — matches capacity', async () => {
-        await fixedPool(makeTasks(), 1);
-      }).run({ iterations: 3, warmupIterations: 1 });
+    await bench('fixed pool (concurrency=1) — matches capacity', async () => {
+      await fixedPool(makeTasks(), 1);
+    }).run({ iterations: 3, warmupIterations: 1 });
   });
 
   test('sway (defaults, initial=4)', async ({ bench }) => {
-    await bench(
-      'sway (defaults, initial=4)', async () => {
-        const { stats } = await sway(makeTasks());
-        // eslint-disable-next-line no-console
-        console.log(
-          `  [sway] peak=${stats.peakConcurrency} avg=${stats.avgConcurrency.toFixed(2)}`
-        );
-      }).run({ iterations: 3, warmupIterations: 1 });
+    await bench('sway (defaults, initial=4)', async () => {
+      const { stats } = await sway(makeTasks());
+
+      console.log(
+        `  [sway] peak=${stats.peakConcurrency} avg=${stats.avgConcurrency.toFixed(2)}`
+      );
+    }).run({ iterations: 3, warmupIterations: 1 });
   });
 });
 
@@ -297,21 +292,19 @@ describe('queuing resource (capacity=4, Netflix model)', () => {
   };
 
   test('fixed pool (concurrency=4) — matches capacity', async ({ bench }) => {
-    await bench(
-      'fixed pool (concurrency=4) — matches capacity', async () => {
-        await fixedPool(makeTasks(), 4);
-      }).run({ iterations: 3, warmupIterations: 1 });
+    await bench('fixed pool (concurrency=4) — matches capacity', async () => {
+      await fixedPool(makeTasks(), 4);
+    }).run({ iterations: 3, warmupIterations: 1 });
   });
 
   test('sway (defaults, initial=4)', async ({ bench }) => {
-    await bench(
-      'sway (defaults, initial=4)', async () => {
-        const { stats } = await sway(makeTasks());
-        // eslint-disable-next-line no-console
-        console.log(
-          `  [sway] peak=${stats.peakConcurrency} avg=${stats.avgConcurrency.toFixed(2)}`
-        );
-      }).run({ iterations: 3, warmupIterations: 1 });
+    await bench('sway (defaults, initial=4)', async () => {
+      const { stats } = await sway(makeTasks());
+
+      console.log(
+        `  [sway] peak=${stats.peakConcurrency} avg=${stats.avgConcurrency.toFixed(2)}`
+      );
+    }).run({ iterations: 3, warmupIterations: 1 });
   });
 });
 
@@ -333,31 +326,37 @@ describe('shifting capacity (8→4 at midpoint)', () => {
     return Array.from({ length: TASK_COUNT }, () => () => resource(BASE_MS));
   };
 
-  test('fixed pool (concurrency=8) — optimal first half only', async ({ bench }) => {
+  test('fixed pool (concurrency=8) — optimal first half only', async ({
+    bench,
+  }) => {
     await bench(
-      'fixed pool (concurrency=8) — optimal first half only', async () => {
+      'fixed pool (concurrency=8) — optimal first half only',
+      async () => {
         await fixedPool(makeTasks(), 8);
-      }).run({ iterations: 3, warmupIterations: 1 });
+      }
+    ).run({ iterations: 3, warmupIterations: 1 });
   });
 
-  test('fixed pool (concurrency=4) — optimal second half only', async ({ bench }) => {
+  test('fixed pool (concurrency=4) — optimal second half only', async ({
+    bench,
+  }) => {
     await bench(
-      'fixed pool (concurrency=4) — optimal second half only', async () => {
+      'fixed pool (concurrency=4) — optimal second half only',
+      async () => {
         await fixedPool(makeTasks(), 4);
-      }).run({ iterations: 3, warmupIterations: 1 });
+      }
+    ).run({ iterations: 3, warmupIterations: 1 });
   });
 
   test('fixed pool (concurrency=6) — compromise', async ({ bench }) => {
-    await bench(
-      'fixed pool (concurrency=6) — compromise', async () => {
-        await fixedPool(makeTasks(), 6);
-      }).run({ iterations: 3, warmupIterations: 1 });
+    await bench('fixed pool (concurrency=6) — compromise', async () => {
+      await fixedPool(makeTasks(), 6);
+    }).run({ iterations: 3, warmupIterations: 1 });
   });
 
   test('sway (defaults, initial=4)', async ({ bench }) => {
-    await bench(
-      'sway (defaults, initial=4)', async () => {
-        await sway(makeTasks());
-      }).run({ iterations: 3, warmupIterations: 1 });
+    await bench('sway (defaults, initial=4)', async () => {
+      await sway(makeTasks());
+    }).run({ iterations: 3, warmupIterations: 1 });
   });
 });

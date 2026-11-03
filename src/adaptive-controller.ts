@@ -11,7 +11,7 @@ const DEFAULT_PROBE_MULTIPLIER = 30;
  * Jitter dead-zone for latency-ratio queuing detection.
  *
  * `queueSize` is estimated from `concurrency × (1 − minLatency / emaLat)`, where
- * `minLatency` is the strict no-load floor. On a noisy-but-healthy resource the
+ * `minLatency` is the no-load baseline (P25 of a rolling window). On a noisy-but-healthy resource the
  * EMA naturally sits a few percent above that floor (additive jitter is always
  * ≥ the base service time), so a tiny ratio like `1.1` is measurement noise, not
  * queuing — but at small limits that ratio still yields `queueSize = 1`, which a
@@ -228,7 +228,9 @@ export class AdaptiveController {
    * deterministic queuing sim and the unit tests.
    *
    * @param durationMs - How long the task took in milliseconds
-   * @param inflight - Tasks still in flight after this one completed
+   * @param inflight - Tasks still in flight, counting this one (Netflix's
+   *   `getActiveCount()`); must be ≥ 1 so the anti-drift guard can let a
+   *   controller at the minimum grow.
    * @param didDrop - Whether the task was dropped or timed out
    */
   recordCompletion(
@@ -272,6 +274,12 @@ export class AdaptiveController {
     this.completionsSinceLastProbe++;
     this.concurrencySum += this.concurrency;
     this.concurrencySamples++;
+
+    // Count every completion toward the re-probe cadence (Netflix increments
+    // its `probeCount` per RTT sample). The re-probe then fires after roughly
+    // `probeJitter × probeMultiplier × concurrency` completions — matching the
+    // documented interval — rather than that many *probes*.
+    this.probeCount++;
 
     if (this.completionsSinceLastProbe >= this.probeInterval) {
       this.probe(inflight, didDrop);
@@ -317,8 +325,6 @@ export class AdaptiveController {
     const minLat = this.minLatency;
     const emaLat = this.latencyEma;
     if (minLat === null || emaLat === null) return;
-
-    this.probeCount++;
 
     // ── Re-probe ───────────────────────────────────────────────────────
     // After roughly `jitter × probeMultiplier × concurrency` completions,

@@ -213,7 +213,7 @@ Sway uses **latency** instead. Latency is a *leading* indicator -- it rises *imm
 
 The controller tracks two values:
 
-- **`minLatency`** -- the lowest task duration observed (stable no-load baseline)
+- **`minLatency`** -- the no-load baseline: the low percentile (P25) of a rolling window of recent task durations
 - **`latencyEma`** -- an exponential moving average of recent task durations
 
 Every `probeInterval` completions it estimates how many requests are queued behind
@@ -235,6 +235,12 @@ intent for VegasLimit):
 | Mild queuing | `queueSize < 10%` | Slow increase (log-root step) |
 | Heavy queuing | `queueSize > 10%` | Decrease (log-root step) |
 | Sweet spot | in between | Hold |
+
+The bands are rounded to integers, so the "mild queuing" (slow increase) band
+only exists when `10% − 5%` of the limit spans at least one whole number — at
+most small/medium limits (e.g. below 25, or 30-34) there is no integer `queueSize`
+between the two bounds, so the controller jumps straight from aggressive increase
+to decrease.
 
 A latency ratio past the jitter dead-zone (1.15× the no-load floor) is treated as
 queuing even when the size bands don't fire — so a single queued request at a tiny

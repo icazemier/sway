@@ -8,7 +8,8 @@
     "exclude": [
       "src/*.spec.ts",
       "src/*.bench.ts",
-      "src/clinic-profile.ts"
+      "src/clinic-profile.ts",
+      "src/queuing-sim.ts"
     ]
   }
 }
