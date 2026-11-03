@@ -14,6 +14,9 @@ const ignores = [
   // Benchmark files have different dependencies (vitest bench API)
   '**/*.bench.ts',
   'src/bench-resources.ts',
+  // Throwaway local simulations — gitignored, excluded from lint too so a
+  // scratch sim/ file never fails `npm run lint`.
+  'sim/**/*',
 ];
 
 const stylisticConfig = {

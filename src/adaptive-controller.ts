@@ -253,9 +253,7 @@ export class AdaptiveController {
       // warm, allowing recovery after an overshoot rather than clinging to a
       // stale absolute minimum forever.
       const sorted = [...this.latencyWindow].sort((a, b) => a - b);
-      const idx = Math.floor(
-        this.baselinePercentile * (sorted.length - 1)
-      );
+      const idx = Math.floor(this.baselinePercentile * (sorted.length - 1));
       const percentile = sorted[idx];
       if (percentile > this.minLatency) {
         this.minLatency = percentile;
