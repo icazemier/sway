@@ -386,6 +386,31 @@ describe('AdaptiveController', () => {
     expect(result.peakConcurrency).toBeLessThanOrEqual(6);
   });
 
+  it('grows from the minimum when started at initialConcurrency=1', () => {
+    // Regression: at concurrency 1, the anti-drift guard (`inflight * 2 <
+    // concurrency`) always holds when `inflight` excludes the completing task,
+    // because it is 0 after decrement. The controller must instead count the
+    // completing task (Netflix `getActiveCount()`) so a controller at the
+    // minimum can still probe up toward the optimum.
+    const controller = new AdaptiveController({
+      ...VERIFY_OPTIONS,
+      initialConcurrency: 1,
+      minConcurrency: 1,
+    });
+
+    const result = runQueuingSim(
+      controller,
+      /* capacity */ 4,
+      /* service */ 10,
+      3000
+    );
+
+    // It must leave 1 and reach the capacity-4 optimum.
+    expect(result.avgConcurrency).toBeGreaterThan(1.5);
+    expect(result.avgConcurrency).toBeGreaterThanOrEqual(3.0);
+    expect(result.avgConcurrency).toBeLessThanOrEqual(4.5);
+  });
+
   describe('option validation', () => {
     it.each([
       ['maxConcurrency', { maxConcurrency: 0 }],
