@@ -1,5 +1,3 @@
-# @icazemier/sway
-
 ## 2.3.0-beta.2
 
 ### Patch Changes
@@ -17,6 +15,12 @@
   - Adds a jitter dead-zone so measurement noise is not read as queuing.
 
   Adds a new `probeMultiplier` option to control how often the no-load baseline is refreshed (default `30`), and exports the `Sway` type (the augmented `sway` function with its `allSettled` and `map` variants).
+## 2.2.1
+
+### Patch Changes
+
+- 405d0d9: Security: update @changesets/cli and vitest to address supply chain vulnerabilities
+
 
 ## 2.2.1-beta.0
 
