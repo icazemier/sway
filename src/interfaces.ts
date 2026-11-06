@@ -8,10 +8,24 @@ export interface SwayOptions {
   minConcurrency?: number;
   /** Number of concurrent in-flight tasks to start with (default: `4`) */
   initialConcurrency?: number;
-  /** Latency EMA smoothing factor, ratio between 0 and 1 — lower values produce calmer adjustments (default: `0.3`) */
+  /**
+   * Latency EMA smoothing factor, ratio between 0 and 1 (default: `0.3`).
+   * Governs how noisy the measured latency EMA is: lower values average the
+   * latency more heavily (calmer queue-size estimates, fewer spurious
+   * adjustments); higher values track the latest sample more eagerly.
+   * Limit adjustments themselves are decisive integer steps — see
+   * `recordCompletion` for why smoothing them through an integer limit would
+   * erase them after rounding.
+   */
   smoothingFactor?: number;
   /** Number of completed tasks between probe adjustments (default: `8`) */
   probeInterval?: number;
+  /**
+   * Completeness factor for the periodic re-probe: the baseline is refreshed
+   * after roughly `jitter × probeMultiplier × concurrency` completions.
+   * Higher values probe less often (default: `30`)
+   */
+  probeMultiplier?: number;
 }
 
 /**

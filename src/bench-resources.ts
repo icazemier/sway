@@ -27,7 +27,13 @@ export function createContentionResource(optimalConcurrency: number) {
   return (baseMs: number): Promise<number> => {
     inFlight++;
     const load = inFlight / optimalConcurrency;
-    const penalty = load > 1 ? baseMs * (load - 1) ** 2 * 4 : 0;
+    // Quadratic penalty, capped at 40× the base service time so a wildly
+    // overshooting fixed pool (concurrency=64 on a 4-slot resource) stays
+    // tractable instead of taking ~13s per task. The shape is still
+    // quadratic below the cap — overshoot gets punished, just not to
+    // multi-minute absurdity.
+    const penalty =
+      load > 1 ? Math.min(baseMs * (load - 1) ** 2 * 4, baseMs * 40) : 0;
     const jitter = Math.random() * baseMs * 0.2;
     const actualDelay = baseMs + penalty + jitter;
 
@@ -98,7 +104,9 @@ export function createShiftingResource(
     inFlight++;
     const capacity = tasksSeen <= shiftAfter ? firstCapacity : secondCapacity;
     const load = inFlight / capacity;
-    const penalty = load > 1 ? baseMs * (load - 1) ** 2 * 4 : 0;
+    // Same capped quadratic penalty as createContentionResource.
+    const penalty =
+      load > 1 ? Math.min(baseMs * (load - 1) ** 2 * 4, baseMs * 40) : 0;
     const jitter = Math.random() * baseMs * 0.2;
     const actualDelay = baseMs + penalty + jitter;
 
