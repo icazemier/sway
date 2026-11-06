@@ -80,7 +80,7 @@ jobs:
       pull-requests: write
     outputs:
       published: ${{ steps.changesets.outputs.published }}
-      publishedPackages: ${{ steps.changesets.outputs.publishedPackages }}
+      publishedPackages: ${{ steps.changesets.outputs.published-packages }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -140,11 +140,22 @@ jobs:
       # release. Publishing goes through the runner's own npm, so it uses OIDC
       # trusted publishing and needs no long-lived token; provenance comes from
       # publishConfig.
+      # v2.x of changesets/action: v1.9.0 carried a legacy changesets-v1
+      # pre-mode scan that reads .changeset/pre/changes.md whenever a
+      # .changeset/pre/ directory exists, crashing with ENOENT under the v3
+      # CLI's pre mode (which keeps individual changesets there and stores
+      # state in pre.json). v2 removed that read. v2 also renamed inputs:
+      # publish -> publish-script, createGithubReleases -> create-github-releases,
+      # commitMode: git-cli -> push-with-git-cli (v2 default is false, so set it
+      # explicitly to keep tagging via the git CLI). setupGitUser is gone — v2
+      # configures the git user itself.
       - name: Publish
         id: changesets
-        uses: changesets/action@a45c4d594aa4e2c509dc14a9f2b3b67ba3780d0d # v1.9.0
+        uses: changesets/action@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
         with:
-          publish: npm run release
+          publish-script: npm run release
+          create-github-releases: true
+          push-with-git-cli: true
 
   jsr:
     name: Publish to JSR
