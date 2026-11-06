@@ -5,8 +5,8 @@ import { AdaptiveController } from './adaptive-controller.js';
  * Run async tasks concurrently with adaptive concurrency control.
  *
  * Works like `Promise.all()` but automatically tunes the number of in-flight
- * tasks using a latency-gradient controller that finds the optimal
- * concurrency level.
+ * tasks using a latency-based adaptive controller (VegasLimit-style) that
+ * finds the optimal concurrency level.
  * Rejects on the first error (fail-fast), just like `Promise.all()`.
  *
  * @typeParam T - The resolved type of each task
@@ -93,7 +93,18 @@ export async function runSway<T>(
             results[index] = value;
             activeTasks--;
             if (shouldRecord(value)) {
-              controller.recordCompletion(performance.now() - taskStart);
+              const completedAt = performance.now();
+              // Report the in-flight count including this task, matching
+              // Netflix's `getActiveCount()`. The anti-drift guard holds when
+              // `inflight * 2 < concurrency`, and `activeTasks` alone (0 after
+              // decrement at concurrency 1) would make that guard hold forever,
+              // leaving the controller stuck at 1. Counting the completing task
+              // keeps it ≥ 1 so it can grow from the minimum.
+              controller.recordCompletion(
+                completedAt - taskStart,
+                activeTasks + 1,
+                /* didDrop */ false
+              );
             }
             scheduleNext();
           })
