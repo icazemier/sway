@@ -11,7 +11,7 @@ So to solve this, one implements a way to "limit" concurrency. Then again, what 
 
 Sway just puts 2 ideas together, (1st) an adaptive controller to control the (2nd) `maxConcurrency` and uses a feedback loop to adapt.
 
-Sway automatically finds the optimal number of concurrent tasks -- you don't have to guess. Under the hood it uses a latency-gradient algorithm inspired by [TCP Vegas](https://en.wikipedia.org/wiki/TCP_Vegas) and [Netflix's adaptive concurrency limiter](https://netflixtechblog.medium.com/performance-under-load-3e6fa9a60581).
+Sway automatically finds the optimal number of concurrent tasks -- you don't have to guess. Under the hood it watches task latency and adjusts concurrency up or down, using the same idea as [TCP Vegas](https://en.wikipedia.org/wiki/TCP_Vegas) and [Netflix's adaptive concurrency limiter](https://netflixtechblog.medium.com/performance-under-load-3e6fa9a60581).
 
 ## Runtime Compatibility
 
