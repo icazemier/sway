@@ -19,7 +19,7 @@
 
 ### Files Modified
 - `src/adaptive-controller.ts` - Complete rewrite using VegasLimit algorithm
-- `src/adaptive-controller.spec.ts` - 32 unit tests covering deterministic queuing scenarios
+- `src/adaptive-controller.spec.ts` - 33 unit tests covering deterministic queuing scenarios
 - `src/queuing-sim.ts` - Deterministic queuing-resource simulator for the specs
 - `src/interfaces.ts` - Added `probeMultiplier` option; removed the throughput-gate options
 - `PDR_CONTROLLER_REBUILD.md` - This document updated with final implementation notes
@@ -157,7 +157,7 @@ The rebuilt `AdaptiveController` is faithful to Netflix's VegasLimit algorithm w
 
 ### Test Results
 
-All 32 adaptive-controller unit tests pass, including:
+All 33 adaptive-controller unit tests pass, including:
 
 - **capacity-1 queuing resource**: avgConcurrency ≈ 1.02, peak ≤ 8 ✓
 - **capacity-4 queuing resource**: avgConcurrency ≈ 4.04 (within 3.5-4.5), peak ≤ 6 ✓
