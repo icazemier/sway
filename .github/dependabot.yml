@@ -1,0 +1,7 @@
+# Dependabot PRs are disabled on purpose: dependency updates are handled
+# manually through the @security-updates skill (targeted bumps, aligned
+# majors like vitest/@vitest/coverage-v8, full verify chain, changeset,
+# release via the GitFlow pipeline). An empty updates list turns off
+# Dependabot PR creation for this repo.
+version: 2
+updates: []
