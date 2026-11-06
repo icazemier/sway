@@ -1,171 +1,101 @@
-# Adaptive controller algorithm
+# Adaptive controller — algorithm reference (VegasLimit rebuild)
 
-Deep reference for sway's latency-gradient controller. Records the reasoning
-behind each term and guard so a future contributor can tinker without breaking
-the equilibrium.
+This document is the derivation and rationale behind `src/adaptive-controller.ts`
+after the VegasLimit rebuild (PR #53). It maps every term to its Netflix
+`concurrency-limits` original and notes deliberate deviations.
 
-## Lineage
+## Core estimate
 
-The design comes from two sources:
-
-- **TCP Vegas** — uses latency *differences* to detect congestion before loss,
-  rather than reacting to dropped packets (the leading-indicator idea).
-- **Netflix's concurrency-limits** — limits in-flight requests by comparing a
-  no-contention latency baseline to current latency, adapting to backend
-  capacity without knowing it in advance.
-
-Sway's controller is the direct JS descendant of Netflix's **`GradientLimit`**
-(`com.netflix.concurrency.limits.limit.GradientLimit`), with a simplified
-update rule. Netflix's own update step, for comparison:
-
-```java
-gradient = max(0.5, min(1.0, rttTolerance * rttNoLoad / rtt));
-newLimit = estimatedLimit * gradient + queueSize;   // queueSize ≈ √limit by default
-newLimit = max(queueSize, min(maxLimit, newLimit));
-if (newLimit < estimatedLimit) {
-    newLimit = max(minLimit, estimatedLimit*(1-smoothing) + smoothing*newLimit);
-}
+```ts
+queueSize = ceil(concurrency × (1 − minLatency / latencyEma))
 ```
 
-The `queueSize` defaults to `SquareRootFunction.create(4)` — i.e. `√limit`,
-which is exactly where sway's `+ √concurrency` term comes from. Netflix's README
-explains the rationale: *"better than a fixed queue size that becomes too small
-for large limits but still prevents the limit from growing too much by slowing
-down growth as the limit grows."*
+- Netflix `VegasLimit`: `expected = limit × rttNoLoad / rttLoad`;
+  `queueSize = limit − expected`. Same shape: `limit × (1 − min/ema)`.
+- `latencyEma` — EMA of task durations, `α = smoothingFactor` (default 0.3).
+  Netflix `VegasLimit` uses a similar RTT EMA.
+- `minLatency` — **P25 of a rolling 64-sample window**, re-anchored once the
+  window is warm. Netflix uses a strict monotonic `rttNoLoad`. Deliberate
+  deviation: a strict floor clings to the low tail of a jitter distribution and
+  spirals the limit to 1 on contended resources (the collapse-to-1 regression
+  the rebuild fixed). The low percentile stays exact when there is no jitter
+  but recovers after an overshoot spike.
 
-## How sway maps to Netflix's GradientLimit
+## Jitter dead-zone
 
-| Netflix `GradientLimit` | Sway `AdaptiveController` |
-| --- | --- |
-| `rttNoLoad` (minimum RTT measurement) | `minLatency` (learned no-contention baseline) |
-| `rtt` (current sample) | `latencyEma` (smoothed current latency) |
-| `gradient = rttTolerance * rttNoLoad / rtt` | `gradient = minLatency / latencyEma` |
-| `queueSize ≈ √limit` | `+ √concurrency` |
-| `minLimit` / `maxLimit` | `minConcurrency` / `maxConcurrency` |
-| `smoothing` (default 0.2) | `smoothingFactor` (default 0.3) |
-| periodic RTT probe/reset | `minLatency` decay toward EMA (the 5% term) |
+`MIN_QUEUING_RATIO = 1.15`. On a noisy-but-healthy resource the EMA sits a few
+percent above the floor (additive jitter ≥ base service time), so `emaLat/minLat`
+≈ 1.1 is noise, not queuing. Inflation ≤ 1.15× is treated as `queueSize = 0`;
+past it, `hasQueuing` is true even when the size bands don't fire — so one queued
+task at a tiny limit still triggers a decrease.
 
-Key deliberate simplifications in sway:
+## Decision bands (proportional, Netflix's documented intent)
 
-- Netflix clamps the gradient to a floor of `0.5` (so a limit is never reduced
-  by more than half per step) and scales by `rttTolerance` (default 2.0, meaning
-  a 2× latency rise is tolerated before reducing). Sway does **not** clamp the
-  gradient to `0.5` — it lets it fall further under heavy contention (10× latency
-  → gradient ~0.1), trading Netflix's conservatism for sharper load-shedding.
-- Netflix reduces the limit *aggressively* on a dropped/timeout request
-  (`backoffRatio`) and refuses to grow when app-limited. Sway has no timeout
-  signal, so it never back-offs on drops — it only reacts through latency.
-- Netflix applies its `smoothing` when the new limit **shrinks**; sway's
-  `smoothingFactor` is baked into the EMA of latencies instead, not the limit.
+| `queueSize` vs limit | Action |
+|---|---|
+| `≤ round(5%·limit)` | aggressive increase: `+max(1, beta)` |
+| `< max(1, round(10%·limit))` and not queuing | slow increase: `+log10Root(limit)` |
+| `> max(1, floor(10%·limit))` | decrease: `−log10Root(limit)` |
+| in between | hold |
 
-These differences are deliberate; when tinkering, treat them as features, not
-bugs.
+- `beta` is floored at 1 so `queueSize = 1` is always caught by `hasQueuing`.
+- Netflix: `alpha = max(1, round(0.1·limit))`, `beta = max(1, floor(0.1·limit))`,
+  `threshold = round(0.05·limit)`. Same here.
+- The "mild queuing" band only exists when `10% − 5%` of the limit spans a whole
+  integer (e.g. limit ≥ 25); below that the controller jumps straight from
+  aggressive increase to decrease.
+- `step = log10Root(limit)` — Netflix's `log10` step function.
 
-## Why latency over throughput
+## Hysteresis (`settled`)
 
-Throughput (tasks/sec) is a *lagging* indicator: it only drops *after* you have
-already overshot, by which point back-pressure has piled up. Latency is
-*leading*: it rises immediately when concurrency exceeds the sweet spot, because
-tasks start queueing before throughput visibly falls. A controller that reacts
-to latency catches contention early instead of chasing it.
+Netflix's VegasLimit oscillates one step above the optimum because latency jitter
+with `queueSize = 0` triggers `+beta` on every probe. Once the controller finds
+the sweet spot (`settled = true`), it stops **all** probing up until the next
+re-probe. Deviation is deliberate: we settle instead of oscillating.
 
-## Terms in the update rule
+## Decisive integer steps
 
-```
-newLimit = concurrency × gradient + √concurrency
-```
+The limit is an integer; the adjustment is applied as-is, not smoothed through an
+EMA. Smoothing a `+1` move (`4 → 0.7·4 + 0.3·5 = 4.3 → round 4`) erases it — the
+old gradient model never ramped for exactly this reason.
 
-| Term | Meaning | Why |
-| ---- | ------- | --- |
-| `gradient = minLatency / latencyEma` | Ratio of no-contention baseline to current latency. ≈1 = no contention; ~0.5 = 2× baseline (moderate); ~0.1 = 10× baseline (heavy). | Multiplicatively scales concurrency toward equilibrium. |
-| `concurrency × gradient` | The equilibrium-seeking component. | Scales the current level down under contention, holds it steady at baseline. |
-| `√concurrency` | Cautious growth term. | Lets concurrency grow even at neutral gradient (gradient ≈ 1), so the controller never stalls. The square root gives diminishing marginal growth. |
+## Re-probe
 
-## The EMA smoothing
+- `probeCount++` on **every** `recordCompletion` (Netflix increments per RTT
+  sample). Do not move it into `probe()` — that makes re-probes
+  `probeInterval`× rarer than documented.
+- Re-probe fires when `probeJitter × probeMultiplier × concurrency ≤ probeCount`
+  (`probeJitter` re-drawn ∈ [0.5, 1] after each re-probe; `probeMultiplier`
+  default 30). It refreshes the baseline to the current EMA and holds the limit,
+  so capacity growth is detected.
 
-```
-newEma = α·duration + (1−α)·oldEma
-```
+## Anti-drift guard
 
-`α = smoothingFactor`, default `0.3`. Lower α = calmer adjustments (more
-historical weight); higher = more responsive but noisier. This is the
-exponential moving average of recent task durations.
-
-## The learned baseline and its decay
-
-`minLatency` starts as the first observed duration and is updated to any faster
-task. **Critically, it is not a permanent floor:**
-
-```
-minLatency = minLat + (emaLat − minLat) × 0.05
+```ts
+if (inflight * 2 < concurrency) return;  // hold — not enough real load to fill the limit
 ```
 
-After each probe, the baseline decays 5% toward the EMA. This prevents a single
-anomalously-fast early task from permanently skewing the gradient; genuinely
-fast tasks keep refreshing the baseline. Removing the decay would make the
-controller permanently pessimistic about a transient fast sample.
+`inflight` must count the completing task (Netflix `getActiveCount()`); `sway.ts`
+passes `activeTasks + 1`. At concurrency 1, excluding the completing task gives
+`inflight = 0`, the guard holds forever, and the controller is stuck at 1.
 
-## Edge cases the code defends against
+## Scheduler notes (`src/sway.ts`)
 
-### 0/0 → NaN gradient
+- Lazy pull while `activeTasks < getConcurrency()`; fail-fast reject on first
+  error; results in input order.
+- `recordCompletion(completedAt − taskStart, activeTasks + 1, /* didDrop */ false)`.
+- `didDrop = true` (timeout/drop) forces a decisive decrease regardless of
+  measured queue size.
 
-If both `minLatency` and the EMA measure 0 (a task completing in 0ms), the naive
-`minLat / emaLat` is `NaN`. `NaN` fails every comparison, so it would survive
-clamping and permanently close the scheduler's concurrency gate. The code guards:
+## Netflix mapping
 
-```
-gradient = emaLat > 0 ? minLat / emaLat : 1
-```
-
-No measurable latency means no contention → neutral gradient (1), and the limit
-still grows by the probe term.
-
-### NaN through clamp
-
-`Math.max`/`Math.min` propagate `NaN` rather than clamping it. `clamp()` must
-therefore return the current concurrency when given `NaN`:
-
-```
-if (Number.isNaN(value)) return this.concurrency;
-return Math.max(min, Math.min(max, value));
-```
-
-Infinities clamp to the bounds normally; only NaN is special.
-
-### Input validation at the edge
-
-Options are validated at construction (`requirePositiveInteger`,
-`requireRatio`), because a value crossing a JS boundary, a parsed config, or an
-`any` in consumer code reaches the controller unchecked. A non-finite or
-fractional bound silently corrupts every later calculation, so it is rejected
-where the caller can still see which option was wrong.
-
-## The 100%-failure regime
-
-When every task fails fast, the controller never receives a successful-task
-latency to learn from, so it stays at `initialConcurrency` (default 4). This is
-expected and documented in the README — cheap in absolute terms, but not where
-adaptive concurrency shines. For a workload that fails ~100% of the time,
-`Promise.allSettled` directly is the right tool.
-
-## Telemetry
-
-- `peakConcurrency` — highest concurrency reached.
-- `avgConcurrency` — weighted average over concurrency samples (not wall-clock),
-  giving a fair mean across varying levels.
-- `adjustments` — count of times the level actually changed.
-
-These must stay honest; they are the contract `SwayStats` exposes to consumers.
-
-## Tinkering checklist
-
-When changing the algorithm, preserve:
-
-1. The `NaN` gradient guard.
-2. The `NaN`-returns-current clamp.
-3. The baseline decay toward the EMA.
-4. Edge validation + `min ≤ initial ≤ max`.
-5. Honest telemetry.
-
-Then verify: `npm run lint`, `npm run build`, `npm test`, and `npm run
-benchmark` (update README tables if numbers shift).
+| sway term | Netflix `VegasLimit` |
+|---|---|
+| `queueSize = ceil(limit × (1 − min/ema))` | `limit − limit × rttNoLoad / rttLoad` |
+| P25 rolling-window `minLatency` | strict `rttNoLoad` (deviation: recoverable) |
+| `MIN_QUEUING_RATIO` dead-zone | — (jitter handled implicitly by beta floor) |
+| threshold/alpha/beta proportional bands | same |
+| `log10Root` step | `log10` step function |
+| `settled` hysteresis | none (Netflix oscillates; we settle) |
+| re-probe every `jitter × probeMultiplier × limit` samples | same (`probeMultiplier` = `PROBE_MULTIPLIER`) |
+| anti-drift `activeCount × 2 < limit` | same |

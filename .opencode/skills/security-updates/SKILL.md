@@ -1,18 +1,17 @@
 ---
 name: Security Updates
-description: Fix supply-chain vulnerabilities in sway's devDependencies and release the fix — with the typedoc/benchmark gotcha handled
+description: Fix supply-chain vulnerabilities in sway's devDependencies and release the fix through the beta → stable pipeline
 ---
 
 # Security Updates
 
 This skill covers remediating supply-chain vulnerabilities in sway's
-devDependencies (typically reported by `npm audit` / Dependabot) and shipping
-the fix through the beta → stable release pipeline.
+devDependencies (typically reported by `npm audit` / Dependabot) and shipping the
+fix through the beta → stable release pipeline.
 
 ## Goal
 
-Zero known vulnerabilities in `npm audit`, with the full verify chain green and
-the **benchmark files untouched**.
+Zero known vulnerabilities in `npm audit`, with the full verify chain green.
 
 ## Workflow
 
@@ -28,67 +27,61 @@ finding lands in `devDependencies`. Common culprits: `@changesets/cli`, `vitest`
 
 ### 2. Bump
 
-Prefer targeted bumps to `^<current-major>` for the affected tool, over
-`npm audit fix --force` (which can jump majors you did not intend). For example:
-
-```bash
-npm install -D @changesets/cli@^3.0.3 vitest@^5.0.5 @vitest/coverage-v8@^5.0.5
-```
-
-Keep the dependency set aligned — `vitest` and `@vitest/coverage-v8` must share
-a major version.
+Prefer targeted bumps to `^<current-major>` for the affected tool over
+`npm audit fix --force` (which can jump majors you did not intend). Keep related
+packages aligned — `vitest` and `@vitest/coverage-v8` must share a major version.
 
 ### 3. Verify the whole chain
 
 ```bash
 npm audit          # expect: 0 vulnerabilities
 npm run lint
-npm run build      # includes typedoc docs
+npm run build      # tsc + typedoc docs
 npm test
 npm run smoke
+npm run verify:pack
 ```
 
-The **benchmark files are the trap**: `npm run benchmark` is *not* part of the
-verify chain and the bench files must stay untouched.
+## Gotchas (current state)
 
-## The typedoc / benchmark gotcha (critical)
-
-A devDependency bump can break the docs build even when tests pass. Root cause:
-`typedoc` compiles the TS program from `tsconfig.json`, which includes
-`./**/*.ts` — so it pulls in `src/*.bench.ts`, which uses APIs (e.g. vitest v4's
-top-level `bench`) that a newer vitest removed.
-
-Rules:
-
-- **Never edit `src/*.bench.ts`** — they use the vitest v4 `bench` API and are
-  sacred.
-- **Never exclude bench files from the root `tsconfig.json`** — ESLint's
-  `parserOptions.project: 'tsconfig.json'` will error if the bench files are not
-  in the program.
-- **Fix it via `tsconfig-typedoc.json`** — the typedoc build already points at
-  this dedicated config (`docs` script: `typedoc --out docs --tsconfig
-  tsconfig-typedoc.json src/index.ts`), which excludes `./**/*.bench.ts` and
-  `./bench-resources.ts`. If the bump changes the TS API, adjust *that* file.
+- **Bench files are ordinary linted source now** — `src/*.bench.ts` use the
+  test-wrapped bench API (`test('...', async ({ bench }) => ...)`) and are covered
+  by eslint (they were removed from the ignore list). You may edit them if a
+  dependency bump breaks them, but keep the API shape consistent.
+- **typedoc copies `src/*.bench.ts` into `docs/media/`.** `vite.config.ts` pins
+  `test.benchmark.include: ['src/**/*.bench.ts']` so `vitest bench` never picks up
+  that copy (it fails on the unresolved `./sway.js` import). Don't remove the pin.
+- **Test-only helpers don't ship.** `src/queuing-sim.ts` is used only by the
+  specs and is excluded from `tsconfig-build-*.json` and `jsr.json` — verify with
+  `npm pack --dry-run` after changing build excludes.
+- Root `tsconfig.json` includes `./**/*.ts` and ESLint's
+  `parserOptions.project` depends on that — don't add bench exclusions to it;
+  typedoc uses `tsconfig-typedoc.json`.
 
 ## Release the fix
 
 Follow the `release` skill. In short:
 
 1. Add a `patch` changeset (`npm run changeset`).
-2. Commit it with the dependency change on a feature branch.
-3. PR → `development` (beta). After it lands, promote `development` → `main` for
-   the stable release.
+2. Commit it with the dependency change on a feature branch; PR → `development` (beta).
+3. After it lands, promote `development` → `main` for the stable release —
+   remember the promotion gotcha: the `development → main` merge needs a pending
+   changeset to actually ship `latest`.
 4. Expect the back-merge PR; ensure it lands.
+5. If the Release workflow fails, diagnose before republishing — see the
+   `release` skill's "Diagnosing a broken release" (the action is pinned to
+   v2.1.2; v1.x crashes in pre mode).
 
 ## Do-not-touch list
 
-- `src/*.bench.ts` — vitest v4 `bench` API, never refactor or bump.
-- `src/bench-resources.ts` — shared benchmark fixtures.
-- Root `tsconfig.json` — keep clean of bench exclusions (lint depends on it).
 - Generated `build/` and `docs/` — produced by the build, not hand-edited.
+- `package-lock.json` — npm-owned; change it via `npm install`.
+- `.changeset/pre.json` — managed by `scripts/pre-mode.mjs`.
 
 ## References
 
-- `tsconfig-typedoc.json` — the typedoc-only config that excludes bench files.
-- `scripts/pre-mode.mjs` — prerelease mode handling for the release.
-- `.github/workflows/ci.yml` / `release.yml` — the verify and release pipelines.
+- `tsconfig-typedoc.json` — typedoc-only config.
+- `vite.config.ts` — `benchmark.include` guard.
+- `scripts/pre-mode.mjs` — prerelease mode handling.
+- `.github/workflows/ci.yml` / `release.yml` — verify and release pipelines.
+- The `release` skill — the full release flow and failure diagnosis.
