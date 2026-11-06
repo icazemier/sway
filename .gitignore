@@ -36,3 +36,8 @@ CLAUDE.md
 
 # Throwaway simulations (not part of the package)
 sim/
+
+# Working documents (PRDs, proposals) — kept locally, not committed
+PDR_*.md
+PROPOSAL*.md
+prds/
