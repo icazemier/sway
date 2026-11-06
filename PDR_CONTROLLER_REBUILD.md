@@ -9,7 +9,7 @@
 
 ### Facts
 - ✅ Rebuilt `AdaptiveController` from scratch, faithful to Netflix's VegasLimit
-- ✅ All 63 tests pass (4 files; 32 adaptive-controller tests)
+- ✅ All 64 tests pass (4 files; 33 adaptive-controller tests)
 - ✅ Pluggable design preserved - same interface as before
 - ✅ Capacity-1: avgConcurrency ≈ 1.02, peak ≤ 8
 - ✅ Capacity-4: avgConcurrency ≈ 4.04 (within 3.5-4.5), peak ≤ 6
