@@ -24,6 +24,7 @@
     "src/**/*.spec.ts",
     "src/**/*.bench.ts",
     "src/bench-resources.ts",
+    "src/queuing-sim.ts",
     "tests/**/*",
     "node_modules",
     "build"

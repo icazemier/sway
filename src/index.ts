@@ -2,6 +2,8 @@ import { sway as swayBase } from './sway.js';
 import { swayAllSettled } from './sway-all-settled.js';
 import { swayMap } from './sway-map.js';
 
+import type { SwayOptions, SwayResult, SwayStats } from './interfaces.js';
+
 type Sway = typeof swayBase & {
   allSettled: typeof swayAllSettled;
   map: typeof swayMap;
@@ -13,4 +15,4 @@ export const sway: Sway = Object.assign(swayBase, {
 });
 
 export { AdaptiveController } from './adaptive-controller.js';
-export type { SwayOptions, SwayResult, SwayStats } from './interfaces.js';
+export type { SwayOptions, SwayResult, SwayStats, Sway };
