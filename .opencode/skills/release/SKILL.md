@@ -75,11 +75,37 @@ Symptom of the v1.9.0 crash (and similar): the version is bumped **in git** but
 never published. Check both sides:
 
 ```bash
-git show origin/development:package.json | grep '"version"'   # bumped?
-npm view @icazemier/sway dist-tags                               # actually published?
-gh run list --workflow Release --limit 5                         # which runs failed?
-gh run view <id> --log-failed                                    # read the error
+git show origin/development:package.json | grep '"version"'    # bumped?
+gh run list --workflow Release --limit 5                          # which runs failed?
+gh run view <id> --log-failed                                     # read the error
+# ground truth from the registry (bypasses npm's local cache):
+curl -s https://registry.npmjs.org/@icazemier%2Fsway | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>console.log(JSON.parse(d)['dist-tags']))"
 ```
+
+⚠️ `npm view` can serve a **stale local cache** — after a publish, always confirm
+with the curl one-liner above before concluding the publish failed.
+
+### Failure #1 (most common): `verify:published` propagation flake
+
+The Release run fails at "Verify both registries serve this version" with
+`npm: does NOT serve <version>`, but the Publish step log shows
+`Successfully published` and the git tag exists. This is npm registry
+propagation lag (observed twice on 2026-11-06: 2.3.1-beta.0 and 2.3.1-beta.1 —
+the version was visible on the registry within ~1 minute).
+
+**Fix: rerun the failed run (`gh run rerun <id>`). Never republish** — publishing
+is idempotent and both registries skip an existing version, but a manual
+republish is never the fix for a propagation flake. Only if the version is still
+absent from the registry (curl check) after several minutes is the Publish step
+genuinely broken — then read the Publish step log.
+
+### Failure #2: red `pull_request` run on a bot version-bump branch
+
+`chore/version-packages-<run-id>` PRs show a `pull_request` CI run with
+conclusion `failure` and **zero jobs** when the PR is merged mid-run — that is a
+cancelled run, not a real failure (seen with run 42252063774). Judge release
+health by the `push` runs on `development`/`main`, not by the bot PR's
+`pull_request` run.
 
 `beta` dist-tag should track the latest `-beta.N` on `development`; `latest`
 only moves from `main`. If they lag `package.json`, the Publish step failed —
@@ -117,7 +143,13 @@ stays invisible to the beta channel — resolve it by hand.
 - Adding changesets for dev-tooling/CI-only changes.
 - Re-publishing after a red `verify:published` without checking whether the
   version is actually served now (registry propagation lag) — publishing is
-  idempotent, so republishing is never the fix for a propagation flake.
+  idempotent, so republishing is never the fix for a propagation flake. Rerun
+  the workflow run instead.
+- Treating a `failure` with zero jobs on a `chore/version-packages-*`
+  `pull_request` run as a real failure — it is cancelled-at-merge. Check the
+  `push` runs on the base branch instead.
+- Trusting `npm view` immediately after a publish — it can serve the local
+  cache. Use the curl registry check in "Diagnosing a broken release".
 
 ## References
 
