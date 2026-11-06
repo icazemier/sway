@@ -31,6 +31,34 @@ Prefer targeted bumps to `^<current-major>` for the affected tool over
 `npm audit fix --force` (which can jump majors you did not intend). Keep related
 packages aligned — `vitest` and `@vitest/coverage-v8` must share a major version.
 
+### 2b. "Update everything to latest" playbook (learned 2026-11-06)
+
+To move all devDependencies to their latest versions:
+
+```bash
+# Latest published version per package — but ALWAYS check peer ranges first:
+npm view <pkg> version
+npm view <pkg>@latest peerDependencies
+```
+
+- **Latest major can be blocked by peer ranges.** Example: `typescript@7.0.2`
+  exists, but `typedoc@0.28.x` caps its peer at `<=6.0.x` and
+  `typescript-eslint@8.x` at `<6.1.0`, so `npm install typescript@latest` fails
+  ERESOLVE. Stay on the newest major the whole toolchain accepts
+  (`typescript@6` → 6.0.3) and note the blocker in the changeset.
+- Install with `npm install -D <pkg>@latest ...` (updates package.json +
+  lockfile properly). Leave intentionally pinned packages (e.g. `jsr: 0.14.3`)
+  alone if already at latest.
+- **Transitive advisories with no semver-compatible fix need an `overrides`
+  entry.** Example: GHSA-g3hv-75wg-m249 / CVE-2026-118764 (minimatch DoS,
+  patched in 11.0.1) — eslint/typedoc/typescript-eslint all pin `minimatch@^10`,
+  so `npm audit` reports `fixAvailable: NONE`. Add to package.json:
+  `"overrides": { "minimatch": "^11.0.1" }`, `npm install`, then `npm ls minimatch`
+  to confirm everything deduped to the patched version. An override changes
+  transitive majors, so the full verify chain below is mandatory.
+- Skip prerelease versions (`1.0.0-dev.x`) — `npm view <pkg> version` only
+  returns the latest stable tag.
+
 ### 3. Verify the whole chain
 
 ```bash
@@ -41,6 +69,11 @@ npm test
 npm run smoke
 npm run verify:pack
 ```
+
+Also run the chain once on the **current Active LTS Node** (as of 2026-11:
+Node 26 "Lithium", install via `nvm install 26`) in addition to the default
+local Node — CI covers 22.x/24.x/26.x, but catching a runtime break locally is
+cheaper. `engines: >=22.0.0` still covers all supported LTS lines.
 
 ## Gotchas (current state)
 
